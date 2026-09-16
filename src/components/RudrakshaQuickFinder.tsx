@@ -111,7 +111,9 @@ export const RudrakshaQuickFinder: React.FC<RudrakshaQuickFinderProps> = ({
   return (
     <section className="bg-vedic-ivory">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="text-center mb-8 sm:mb-10">
+        {/* Left-aligned header — kept consistent with every other section on the page
+            (kicker + heading, no centering) instead of the old centered block. */}
+        <div className="mb-6 sm:mb-10">
           <p className="text-[11px] sm:text-xs font-bold tracking-[0.15em] text-vedic-goldDark uppercase mb-2">
             Rudraksha Finder
           </p>
@@ -120,7 +122,9 @@ export const RudrakshaQuickFinder: React.FC<RudrakshaQuickFinderProps> = ({
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 4 cards → 2x2 grid on mobile (was a single stacked column), 2 cols on small
+            tablets, a single row of 4 from lg up. Same cards, same click behaviour. */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {cards.map((card) => {
             const Icon = card.icon;
             const isFinderCard = card.key !== 'guidance';
@@ -130,15 +134,15 @@ export const RudrakshaQuickFinder: React.FC<RudrakshaQuickFinderProps> = ({
               <button
                 key={card.key}
                 onClick={() => (isFinderCard ? togglePanel(card.key as FinderKey) : handleGuidanceClick())}
-                className={`text-left rounded-2xl border p-5 flex flex-col gap-3 transition-all hover:shadow-card-hover ${
+                className={`text-left rounded-2xl border p-4 sm:p-5 flex flex-col gap-2.5 sm:gap-3 transition-all hover:shadow-card-hover ${
                   isOpen
                     ? 'bg-white border-vedic-gold shadow-md ring-1 ring-vedic-gold'
                     : 'bg-white border-vedic-gold/15 hover:border-vedic-gold/40'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="w-11 h-11 rounded-full bg-vedic-card flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-vedic-goldDark" strokeWidth={1.5} />
+                  <span className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-vedic-card flex items-center justify-center">
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-vedic-goldDark" strokeWidth={1.5} />
                   </span>
                   {isFinderCard && (
                     <ChevronDown
@@ -148,10 +152,10 @@ export const RudrakshaQuickFinder: React.FC<RudrakshaQuickFinderProps> = ({
                   {!isFinderCard && <ArrowRight className="w-4 h-4 text-vedic-muted" />}
                 </div>
                 <div>
-                  <h3 className="font-serif font-semibold text-vedic-dark text-sm sm:text-base mb-1 leading-snug">
+                  <h3 className="font-serif font-semibold text-vedic-dark text-[13px] sm:text-base mb-1 leading-snug">
                     {card.title}
                   </h3>
-                  <p className="text-xs sm:text-sm text-vedic-muted leading-relaxed">{card.description}</p>
+                  <p className="text-[11px] sm:text-sm text-vedic-muted leading-relaxed">{card.description}</p>
                 </div>
               </button>
             );

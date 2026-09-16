@@ -1,64 +1,188 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Heart, ShoppingBag, Star } from 'lucide-react';
 import { MOCK_PRODUCTS } from '../data/products';
-import { ProductCard } from './ProductCard';
+import type { Product } from '../types/ecommerce';
+import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 
-// Spec section 6 ("Most Loved Rudraksha"): a curated bestseller carousel mixing numbered Mukhi
-// with the special beads. Picked by real slug from MOCK_PRODUCTS — today that's the local demo
-// catalog, but every one of these slugs maps 1:1 to what will be a real Shopify product handle,
-// so this list is the only thing that ever needs editing (or replaced by a Shopify
-// "most-loved-rudraksha" collection fetch — see the note above bestsellerProducts below).
-const CURATED_BESTSELLER_SLUGS = [
-  '5-mukhi-rudraksha',
-  '7-mukhi-rudraksha',
-  '6-mukhi-rudraksha',
-  '8-mukhi-rudraksha',
-  'gauri-shankar-rudraksha',
-  'ganesh-rudraksha',
-  '1-mukhi-rudraksha'
-];
+const BESTSELLER_LIMIT = 8;
 
-const AUTO_SLIDE_INTERVAL = 3000;
+/**
+ * DATA SOURCE — this is backend-driven ranking, not a hand-picked list of slugs.
+ *
+ * On Shopify, "Most Loved Rudraksha" becomes one query against a collection
+ * sorted by Shopify's native BEST_SELLING sort key, which Shopify computes
+ * from real order history across the store:
+ *
+ *   query MostLovedRudraksha {
+ *     collection(handle: "most-loved-rudraksha") {
+ *       products(first: 8, sortKey: BEST_SELLING) {
+ *         edges { node { id title handle ... } }
+ *       }
+ *     }
+ *   }
+ *
+ * (Storefront API `productSortKeys: BEST_SELLING` — see
+ * https://shopify.dev/docs/api/storefront/latest/enums/ProductCollectionSortKeys)
+ *
+ * Until that collection is connected, we approximate "top selling" locally
+ * from the same MOCK_PRODUCTS catalog every other component reads, ranking
+ * by real product signals (the isBestseller flag + review volume + rating)
+ * instead of a fixed list of slugs — so today it's demo data, but the *rule*
+ * ("show whichever 8 rank highest") is already the real rule.
+ *
+ * To go live: delete this function's body and replace it with the
+ * Storefront API call above, mapped into the same `Product` shape. Nothing
+ * else in this file — the grid, the card, Add to Cart, Wishlist, the
+ * "View All" link — needs to change.
+ */
+function getTopRudrakshaBestsellers(limit: number): Product[] {
+  return MOCK_PRODUCTS
+    .filter((p) => p.category === 'rudraksha')
+    .map((product) => ({
+      product,
+      // Proxy "sales score" standing in for Shopify's real order-derived
+      // BEST_SELLING rank. Weighted so a flagged bestseller always outranks
+      // a non-flagged one, with review volume × rating breaking ties.
+      score: (product.isBestseller ? 100000 : 0) + product.reviewCount * product.rating,
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((entry) => entry.product);
+}
 
-export const RudrakshaBestsellers: React.FC = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
+/**
+ * Card markup mirrors RudrakshaShopByMukhi's card 1:1 (badge, wishlist heart,
+ * sold-out overlay, star rating, price, Add to Cart) — deliberately kept
+ * consistent with that section. Two differences, both intentional:
+ *  - No Quick View (this section never had one, and it stays that way).
+ *  - Only `product.images[0]` is ever shown — no hover image swap. The zoom
+ *    (`group-hover:scale-105`) hover effect is kept identical to ShopByMukhi.
+ */
+const BestsellerCard: React.FC<{ product: Product }> = ({ product }) => {
+  const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
 
-  // ---------------------------------------------------------------------
-  // DATA SOURCE — swap this block for a real Shopify collection fetch
-  // (e.g. `shopifyClient.collection.fetchByHandle('most-loved-rudraksha')`)
-  // once connected. Everything below — the slider, the cards, Add to Cart,
-  // Wishlist, Quick View — already runs on the standard `Product` shape via
-  // the same ProductCard used across the rest of the storefront, so nothing
-  // else here needs to change.
-  // ---------------------------------------------------------------------
-  const bestsellerProducts = CURATED_BESTSELLER_SLUGS.map((slug) =>
-    MOCK_PRODUCTS.find((p) => p.category === 'rudraksha' && p.slug === slug)
-  ).filter((p): p is NonNullable<typeof p> => Boolean(p));
+  const isLiked = isInWishlist(product.id);
+  const inStock = product.stock > 0;
 
-  const scroll = (direction: 'left' | 'right') => {
-    const el = containerRef.current;
-    if (!el) return;
-    const scrollAmount = direction === 'left' ? -280 : 280;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-
-    if (direction === 'right' && scrollLeft + clientWidth >= scrollWidth - 15) {
-      el.scrollTo({ left: 0, behavior: 'smooth' });
-    } else if (direction === 'left' && scrollLeft <= 15) {
-      el.scrollTo({ left: scrollWidth, behavior: 'smooth' });
-    } else {
-      el.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
+  const handleWishlistClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist(product);
   };
 
-  // Automatic infinite sliding loop — pauses on hover, same behaviour as the homepage carousel.
-  useEffect(() => {
-    if (isHovered || !bestsellerProducts.length) return;
-    const timer = setInterval(() => scroll('right'), AUTO_SLIDE_INTERVAL);
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHovered, bestsellerProducts.length]);
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!inStock) return;
+    addToCart(product, 1);
+  };
+
+  return (
+    <div className="group relative bg-white border border-vedic-gold/15 hover:border-vedic-gold/30 rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 flex flex-col">
+      {/* Discount Badge */}
+      {product.discount > 0 && (
+        <span className="absolute top-3 left-3 z-10 bg-vedic-maroon text-vedic-goldLight text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+          {product.discount}% OFF
+        </span>
+      )}
+
+      {/* Wishlist Button */}
+      <button
+        onClick={handleWishlistClick}
+        aria-label={isLiked ? 'Remove from Wishlist' : 'Add to Wishlist'}
+        title={isLiked ? 'Remove from Wishlist' : 'Add to Wishlist'}
+        className={`absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${
+          isLiked
+            ? 'bg-red-50 text-red-600 shadow-md'
+            : 'bg-white/90 text-gray-400 hover:text-red-500 hover:bg-white shadow-sm'
+        }`}
+      >
+        <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+      </button>
+
+      {/* Sold Out overlay */}
+      {!inStock && (
+        <div className="absolute inset-0 z-10 bg-white/60 flex items-center justify-center pointer-events-none">
+          <span className="px-3 py-1 rounded-full bg-vedic-dark text-white text-xs font-bold tracking-wide">
+            Sold Out
+          </span>
+        </div>
+      )}
+
+      {/* Image — same first image always, only a scale zoom on hover */}
+      <Link to={`/products/${product.slug}`} className="relative aspect-square w-full overflow-hidden block">
+        <img
+          src={product.images[0]}
+          alt={product.title}
+          loading="lazy"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = `https://placehold.co/400x400/E9A331/FFF5DE?text=${encodeURIComponent(
+              product.title
+            )}`;
+          }}
+        />
+      </Link>
+
+      {/* Content */}
+      <div className="p-4 sm:p-5 flex-1 flex flex-col bg-white">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <div className="flex text-amber-400">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className={`w-3.5 h-3.5 ${
+                  i < Math.round(product.rating) ? 'fill-current' : 'text-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-xs text-vedic-muted font-medium">({product.reviewCount})</span>
+        </div>
+
+        <Link to={`/products/${product.slug}`}>
+          <h3 className="font-serif font-bold text-vedic-dark text-base sm:text-lg leading-snug mb-3 hover:text-vedic-maroon transition-colors">
+            {product.title}
+          </h3>
+        </Link>
+
+        <div className="mt-auto pt-3 border-t border-vedic-beige flex items-center justify-between gap-2">
+          <div className="flex items-baseline gap-1.5 min-w-0">
+            <span className="text-base sm:text-lg font-extrabold text-vedic-dark">
+              ₹{product.price.toLocaleString('en-IN')}
+            </span>
+            {product.compareAtPrice > product.price && (
+              <span className="text-xs sm:text-sm text-vedic-muted line-through">
+                ₹{product.compareAtPrice.toLocaleString('en-IN')}
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={handleAddToCart}
+            disabled={!inStock}
+            title="Add to Cart"
+            className="inline-flex items-center gap-1.5 bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory px-3.5 py-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent text-xs sm:text-sm font-bold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-vedic-gold/10 disabled:hover:text-vedic-maroon"
+          >
+            <ShoppingBag className="w-4 h-4" />
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const RudrakshaBestsellers: React.FC = () => {
+  // ---------------------------------------------------------------------
+  // Swap this one call for the Shopify BEST_SELLING collection fetch above
+  // once connected — everything below already runs on the standard
+  // `Product` shape.
+  // ---------------------------------------------------------------------
+  const bestsellerProducts = getTopRudrakshaBestsellers(BESTSELLER_LIMIT);
 
   if (bestsellerProducts.length === 0) return null;
 
@@ -66,11 +190,7 @@ export const RudrakshaBestsellers: React.FC = () => {
     <section id="most-loved-rudraksha" className="bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         {/* Section Header */}
-        <div
-          className="flex items-end justify-between gap-4 mb-6 sm:mb-8"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
+        <div className="flex items-end justify-between gap-4 mb-6 sm:mb-8">
           <div>
             <p className="text-[11px] sm:text-xs font-bold tracking-[0.15em] text-vedic-goldDark uppercase mb-2">
               Most Loved
@@ -84,44 +204,20 @@ export const RudrakshaBestsellers: React.FC = () => {
             </p>
           </div>
 
-          <div className="hidden sm:flex items-center gap-3 shrink-0">
-            <Link
-              to="/collections/rudraksha"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-vedic-goldDark hover:text-vedic-maroon transition-colors whitespace-nowrap"
-            >
-              View All Rudraksha
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => scroll('left')}
-                className="p-2 rounded-full bg-white border border-vedic-gold/30 hover:bg-vedic-gold hover:text-vedic-dark transition-colors shadow-sm"
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => scroll('right')}
-                className="p-2 rounded-full bg-white border border-vedic-gold/30 hover:bg-vedic-gold hover:text-vedic-dark transition-colors shadow-sm"
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+          <Link
+            to="/collections/rudraksha"
+            className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-vedic-goldDark hover:text-vedic-maroon transition-colors whitespace-nowrap shrink-0"
+          >
+            View All Rudraksha
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
 
-        {/* Product Carousel */}
-        <div
-          ref={containerRef}
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          className="flex gap-4 sm:gap-5 overflow-x-auto no-scrollbar scroll-smooth pb-2 pt-1"
-        >
+        {/* Top 8 bestsellers — fixed grid (4 columns x 2 rows on tablet/desktop,
+            2 columns on mobile). No carousel, no scroll arrows, no auto-slide. */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
           {bestsellerProducts.map((product) => (
-            <div key={product.id} className="w-[220px] sm:w-[260px] shrink-0">
-              <ProductCard product={product} />
-            </div>
+            <BestsellerCard key={product.id} product={product} />
           ))}
         </div>
 
