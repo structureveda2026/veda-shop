@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Heart, ShoppingBag, Sparkles } from 'lucide-react';
-import { getRudrakshaSpecialTiles, RudrakshaSpecialTile } from '../services/rudrakshaCatalogService';
+import {
+  getRudrakshaSpecialTiles,
+  getRudrakshaSpecialSectionContent,
+  RudrakshaSpecialTile,
+  RudrakshaSpecialSectionContent
+} from '../services/rudrakshaCatalogService';
 import { Product } from '../types/ecommerce';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -45,8 +50,17 @@ function buildProductFromTile(tile: RudrakshaSpecialTile): Product {
  * fetch/loading/empty-state pattern as the sections above, so this grid grows or shrinks with
  * the catalog automatically — no code changes when a new rare entry is added or retired.
  */
+const DEFAULT_SECTION_CONTENT: RudrakshaSpecialSectionContent = {
+  eyebrow: 'Special Rudraksha',
+  title: 'Rare & Special Rudraksha',
+  subtitle: 'Uncommon forms carrying their own distinct traditional significance.',
+  viewAllLabel: 'View All Special Rudraksha',
+  viewAllHref: '/collections/rudraksha'
+};
+
 export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps> = ({ onSelectSpecial }) => {
   const [tiles, setTiles] = useState<RudrakshaSpecialTile[]>([]);
+  const [content, setContent] = useState<RudrakshaSpecialSectionContent>(DEFAULT_SECTION_CONTENT);
   const [isLoading, setIsLoading] = useState(true);
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -54,40 +68,58 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
-    getRudrakshaSpecialTiles().then((result) => {
-      if (!isMounted) return;
-      setTiles(result);
-      setIsLoading(false);
-    });
+    // Section copy (eyebrow/title/subtitle/CTA) and the 4 cards both come from the same
+    // swappable service layer — fetched together so nothing shifts on screen once either
+    // resolves. DEFAULT_SECTION_CONTENT above is only ever a render-before-fetch placeholder.
+    Promise.all([getRudrakshaSpecialTiles(), getRudrakshaSpecialSectionContent()]).then(
+      ([tileResult, contentResult]) => {
+        if (!isMounted) return;
+        setTiles(tileResult);
+        setContent(contentResult);
+        setIsLoading(false);
+      }
+    );
     return () => {
       isMounted = false;
     };
   }, []);
 
   return (
-    <section id="special-rudraksha" className="bg-vedic-brown text-vedic-ivory">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        {/* Section Header — premium dark band, distinct from the ivory/white sections around it,
-            matching the spec's "premium section" note for Rare & Special Rudraksha */}
+    <section id="special-rudraksha" className="relative overflow-hidden bg-gradient-to-b from-vedic-ivory via-vedic-card to-vedic-ivory">
+      {/* Light theme, matching every other Rudraksha section (white/ivory + gold accents) —
+          no dark or maroon band. A soft gold glow behind the heading, a very fine gold dot
+          texture, and hairline top/bottom frames give it a bit more presence than a flat fill,
+          without turning it into its own heavy design. No mandala artwork (design system rule). */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_15%_0%,rgba(245,176,65,0.16),transparent_65%)]" />
+      <div
+        className="absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage: 'radial-gradient(circle, #E9A331 1px, transparent 1px)',
+          backgroundSize: '26px 26px'
+        }}
+      />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-vedic-gold/50 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-vedic-gold/50 to-transparent" />
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+        {/* Section Header — left-aligned, same pattern as every other Rudraksha section */}
         <div className="flex items-end justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <p className="text-[11px] sm:text-xs font-bold tracking-[0.15em] text-vedic-gold uppercase mb-2 flex items-center gap-1.5">
+            <p className="text-[11px] sm:text-xs font-bold tracking-[0.15em] text-vedic-goldDark uppercase mb-2 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" strokeWidth={1.5} />
-              Special Rudraksha
+              {content.eyebrow}
             </p>
-            <h2 className="font-serif font-semibold text-vedic-ivory text-2xl sm:text-3xl mb-2">
-              Rare &amp; Special Rudraksha
+            <h2 className="font-serif font-semibold text-vedic-dark text-2xl sm:text-3xl mb-2">
+              {content.title}
             </h2>
-            <p className="text-sm text-vedic-ivory/70 max-w-xl">
-              Uncommon forms carrying their own distinct traditional significance.
-            </p>
+            <p className="text-sm text-vedic-muted max-w-xl">{content.subtitle}</p>
           </div>
 
           <Link
-            to="/collections/rudraksha"
-            className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-vedic-gold hover:text-vedic-goldLight transition-colors whitespace-nowrap shrink-0"
+            to={content.viewAllHref}
+            className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-vedic-goldDark hover:text-vedic-maroon transition-colors whitespace-nowrap shrink-0"
           >
-            View All Special Rudraksha
+            {content.viewAllLabel}
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -98,12 +130,12 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
             {Array.from({ length: CARD_SKELETON_COUNT }).map((_, i) => (
               <div
                 key={i}
-                className="rounded-2xl border border-vedic-gold/15 bg-vedic-ivory/5 overflow-hidden animate-pulse"
+                className="rounded-2xl border border-vedic-gold/10 bg-white overflow-hidden animate-pulse"
               >
-                <div className="aspect-square bg-vedic-ivory/10" />
+                <div className="aspect-square bg-vedic-card" />
                 <div className="p-4 sm:p-5 space-y-2.5">
-                  <div className="h-3.5 w-3/4 bg-vedic-ivory/10 rounded" />
-                  <div className="h-3 w-1/2 bg-vedic-ivory/10 rounded" />
+                  <div className="h-3.5 w-3/4 bg-vedic-card rounded" />
+                  <div className="h-3 w-1/2 bg-vedic-card rounded" />
                 </div>
               </div>
             ))}
@@ -112,7 +144,7 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
           // Graceful empty state — shows if the connected Shopify collection has no published
           // special-Rudraksha products yet, instead of a visible error.
           <div className="text-center py-10 border border-dashed border-vedic-gold/25 rounded-2xl">
-            <p className="text-sm text-vedic-ivory/70">Special Rudraksha listings will appear here shortly.</p>
+            <p className="text-sm text-vedic-muted">Special Rudraksha listings will appear here shortly.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
@@ -140,17 +172,20 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
                   loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = `https://placehold.co/400x400/3D2B1F/E9A331?text=${encodeURIComponent(
+                    (e.target as HTMLImageElement).src = `https://placehold.co/400x400/E9A331/FFF5DE?text=${encodeURIComponent(
                       tile.name
                     )}`;
                   }}
                 />
               );
 
+              // Same card shell used everywhere else on the site (Bestsellers, Shop By Mukhi) —
+              // bg-white / vedic-gold hairline border / shadow-card — just without the
+              // rating/discount rows this simpler "special" tile shape doesn't carry.
               return (
                 <div
                   key={tile.id}
-                  className="group relative bg-vedic-ivory/5 border border-vedic-gold/15 hover:border-vedic-gold/40 rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 flex flex-col"
+                  className="group relative bg-white border border-vedic-gold/15 hover:border-vedic-gold/30 rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 flex flex-col"
                 >
                   {/* Wishlist Button */}
                   <button
@@ -160,7 +195,7 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
                     className={`absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md transition-all ${
                       isLiked
                         ? 'bg-red-50 text-red-600 shadow-md'
-                        : 'bg-vedic-ivory/90 text-vedic-brown/50 hover:text-red-500 hover:bg-vedic-ivory shadow-sm'
+                        : 'bg-white/90 text-gray-400 hover:text-red-500 hover:bg-white shadow-sm'
                     }`}
                   >
                     <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
@@ -183,38 +218,38 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
                   )}
 
                   {/* Content */}
-                  <div className="p-4 sm:p-5 flex-1 flex flex-col">
-                    <p className="text-[10px] sm:text-[11px] font-semibold text-vedic-gold uppercase tracking-wide mb-1">
+                  <div className="p-4 sm:p-5 flex-1 flex flex-col bg-white">
+                    <p className="text-[10px] sm:text-[11px] font-semibold text-vedic-goldDark uppercase tracking-wide mb-1">
                       {tile.rulingGod}
                     </p>
 
                     {onSelectSpecial ? (
                       <button onClick={handleCardClick} className="text-left">
-                        <h3 className="font-serif font-bold text-vedic-ivory text-base sm:text-lg leading-snug mb-1.5">
+                        <h3 className="font-serif font-bold text-vedic-dark text-base sm:text-lg leading-snug mb-1.5">
                           {tile.name}
                         </h3>
                       </button>
                     ) : (
                       <Link to={`/products/${tile.slug}`}>
-                        <h3 className="font-serif font-bold text-vedic-ivory text-base sm:text-lg leading-snug mb-1.5 hover:text-vedic-gold transition-colors">
+                        <h3 className="font-serif font-bold text-vedic-dark text-base sm:text-lg leading-snug mb-1.5 hover:text-vedic-maroon transition-colors">
                           {tile.name}
                         </h3>
                       </Link>
                     )}
 
-                    <p className="text-xs sm:text-sm text-vedic-ivory/60 leading-relaxed line-clamp-2 mb-4">
+                    <p className="text-xs sm:text-sm text-vedic-muted leading-relaxed line-clamp-2 mb-4">
                       {tile.shortDescription}
                     </p>
 
-                    <div className="mt-auto pt-3 border-t border-vedic-ivory/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <span className="text-base sm:text-lg font-extrabold text-vedic-ivory">
+                    <div className="mt-auto pt-3 border-t border-vedic-beige flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <span className="text-base sm:text-lg font-extrabold text-vedic-dark">
                         ₹{tile.startingPrice.toLocaleString('en-IN')}
                       </span>
 
                       <button
                         onClick={handleAddToCart}
                         title="Add to Cart"
-                        className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-1.5 bg-vedic-gold/15 hover:bg-vedic-gold text-vedic-gold hover:text-vedic-brown px-3.5 py-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent text-xs sm:text-sm font-bold shrink-0"
+                        className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-1.5 bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory px-3.5 py-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent text-xs sm:text-sm font-bold shrink-0"
                       >
                         <ShoppingBag className="w-4 h-4" />
                         Add
@@ -230,10 +265,10 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
         {/* "View All Special Rudraksha" — mobile-only fallback for the header link above */}
         <div className="mt-6 text-center sm:hidden">
           <Link
-            to="/collections/rudraksha"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-vedic-gold hover:text-vedic-goldLight transition-colors"
+            to={content.viewAllHref}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-vedic-goldDark hover:text-vedic-maroon transition-colors"
           >
-            View All Special Rudraksha
+            {content.viewAllLabel}
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

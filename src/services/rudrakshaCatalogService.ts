@@ -193,11 +193,15 @@ function mapSpecialToTile(mukhi: RudrakshaMukhi): RudrakshaSpecialTile {
   };
 }
 
+/** Spec section 10 shows a fixed 4-card row on the homepage/landing grid — everything else in
+ *  the collection is reached via "View All Special Rudraksha", never a 5th+ card squeezed in. */
+const SPECIAL_GRID_LIMIT = 4;
+
 /**
  * ---------------------------------------------------------------------
  * DATA SOURCE — this is the ONLY function that needs to change when Shopify is connected.
  * Replace the body with a real Storefront API call, e.g. fetching a "rare-special-rudraksha"
- * collection (or products tagged accordingly):
+ * collection (or products tagged accordingly), sorted the way you want them to appear:
  *
  *   const products = await shopifyClient.collection.fetchByHandle('rare-special-rudraksha');
  *   return products.map(mapShopifyProductToSpecialTile);
@@ -206,7 +210,9 @@ function mapSpecialToTile(mukhi: RudrakshaMukhi): RudrakshaSpecialTile {
  * RudrakshaSpecialRudraksha.tsx keeps working exactly as it does today with demo data — no
  * component changes needed. An admin adds a new rare/special entry (Garbh Gauri, Nag
  * Rudraksha, Nepal Rudraksha, a Collector piece, etc.) by publishing a product with that tag;
- * this grid only ever renders what's actually returned, so it appears automatically.
+ * this grid only ever renders the top SPECIAL_GRID_LIMIT of whatever's returned (see
+ * getRudrakshaSpecialTiles below), so growing the collection past 4 never breaks the layout —
+ * the rest is always just a click away behind "View All Special Rudraksha".
  * ---------------------------------------------------------------------
  */
 async function fetchRudrakshaSpecialTilesFromSource(): Promise<RudrakshaSpecialTile[]> {
@@ -214,13 +220,48 @@ async function fetchRudrakshaSpecialTilesFromSource(): Promise<RudrakshaSpecialT
   return getSpecialMukhiEntries().map(mapSpecialToTile);
 }
 
-/** Public entry point used by the "Rare & Special Rudraksha" grid. */
+/** Public entry point used by the "Rare & Special Rudraksha" grid. Always capped at
+ *  SPECIAL_GRID_LIMIT (4) cards — pass a real `sortOrder`/`featured` flag on the Shopify side
+ *  (or just curate which 4 products carry the tag) to control which ones win that slice. */
 export async function getRudrakshaSpecialTiles(): Promise<RudrakshaSpecialTile[]> {
   try {
-    return await fetchRudrakshaSpecialTilesFromSource();
+    const tiles = await fetchRudrakshaSpecialTilesFromSource();
+    return tiles.slice(0, SPECIAL_GRID_LIMIT);
   } catch {
     // Graceful degradation: any Shopify hiccup shows an empty grid (handled by the component's
     // own empty state), never a visible error — same pattern used across the rest of the catalog.
     return [];
+  }
+}
+
+/**
+ * Copy for the section header itself — eyebrow, heading, blurb and the "View All" label.
+ * Today this is a hardcoded default; once Shopify is connected, swap the body for a fetch
+ * against a small "rudraksha-special-section" metaobject entry (or a Shopify Page's metafields)
+ * so a store admin can retitle/reword this band from the admin without a code deploy. The
+ * component only ever renders whatever this returns, so no UI changes are needed later.
+ */
+export interface RudrakshaSpecialSectionContent {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  viewAllLabel: string;
+  viewAllHref: string;
+}
+
+const DEFAULT_SPECIAL_SECTION_CONTENT: RudrakshaSpecialSectionContent = {
+  eyebrow: 'Special Rudraksha',
+  title: 'Rare & Special Rudraksha',
+  subtitle: 'Uncommon forms carrying their own distinct traditional significance.',
+  viewAllLabel: 'View All Special Rudraksha',
+  viewAllHref: '/collections/rudraksha'
+};
+
+export async function getRudrakshaSpecialSectionContent(): Promise<RudrakshaSpecialSectionContent> {
+  try {
+    // TODO(Shopify): replace with a metaobject/page-metafield fetch — same shape, no UI changes.
+    return DEFAULT_SPECIAL_SECTION_CONTENT;
+  } catch {
+    return DEFAULT_SPECIAL_SECTION_CONTENT;
   }
 }
