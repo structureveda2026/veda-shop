@@ -187,5 +187,92 @@ export const PURPOSE_LIST: PurposeInfo[] = [
         answer: 'Navratna incorporates 9 sacred gemstones representing all nine celestial planets. It balances overall planetary energy for general wellbeing.'
       }
     ]
+  },
+  // The 4 entries below round out the Rudraksha "Shop By Purpose" section
+  // (src/components/RudrakshaShopByPurpose.tsx) so every one of its 8 cards links
+  // to a real, working /purpose/:slug page — same template, same rest of this file.
+  {
+    id: 'confidence-discipline',
+    slug: 'confidence-discipline',
+    name: 'Confidence & Discipline',
+    hindiName: 'आत्मविश्वास एवं अनुशासन',
+    icon: 'Flame',
+    tagline: 'Build steady willpower, self-discipline, and quiet inner confidence for daily life.',
+    heroImage: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&q=80&w=1200',
+    description: 'In Vedic tradition, disciplined effort (Tapas) and unwavering resolve are considered essential to any long-term pursuit. Certain Rudraksha are traditionally worn as a steady reminder of intent and self-control.',
+    whatItMeans: 'For students, professionals building a new routine, or anyone working toward a long-term goal, this pairing of a disciplined daily practice with an energized Rudraksha is a traditional Vedic approach — not a shortcut.',
+    recommendedRudraksha: ['1 Mukhi Rudraksha', '6 Mukhi Rudraksha (Kartikeya)', '12 Mukhi Rudraksha (Surya Dev)'],
+    recommendedGemstones: ['Ruby (Manik)', "Tiger's Eye", 'Red Coral (Moonga)'],
+    recommendedYantras: ['Surya Yantra', 'Hanuman Yantra'],
+    recommendedPuja: ['Hanuman Chalisa Path', 'Surya Namaskar Sankalp Puja'],
+    faqs: [
+      {
+        question: 'Which Rudraksha is traditionally linked to discipline and willpower?',
+        answer: '6 Mukhi Rudraksha is associated with Lord Kartikeya and is traditionally worn for steady resolve, focus, and disciplined effort.'
+      }
+    ]
+  },
+  {
+    id: 'devotional-practice',
+    slug: 'devotional-practice',
+    name: 'Devotional Practice',
+    hindiName: 'भक्ति साधना',
+    icon: 'Heart',
+    tagline: 'For a daily devotional routine — japa, puja, and regular Vedic practice.',
+    heroImage: 'https://images.unsplash.com/photo-1604881991720-f91add269bed?auto=format&fit=crop&q=80&w=1200',
+    description: 'Rudraksha has been part of daily Vedic devotional practice for generations — worn during puja, used for mantra japa, or kept at a home altar as part of a regular routine.',
+    whatItMeans: 'This selection suits anyone building or maintaining a devotional routine, whether that means a daily puja, a japa mala for mantra counting, or simply wearing a Rudraksha as part of one\'s spiritual practice.',
+    recommendedRudraksha: ['108 Bead Rudraksha Japa Mala', '1 Mukhi Rudraksha', 'Panchmukhi (5 Mukhi) Rudraksha'],
+    recommendedGemstones: ['Natural Pearl (Moti)', 'Rose Quartz'],
+    recommendedYantras: ['Shiv Yantra', 'Shree Yantra'],
+    recommendedPuja: ['Rudra Abhishekam', 'Daily Sankalp Puja'],
+    faqs: [
+      {
+        question: 'Why is a 108-bead Rudraksha mala used for japa?',
+        answer: '108 is a traditionally sacred count in Vedic practice. A 108-bead mala helps keep an accurate count during mantra japa without breaking concentration.'
+      }
+    ]
+  },
+  {
+    id: 'astrology-guidance',
+    slug: 'astrology-guidance',
+    name: 'Astrology & Kundli Guidance',
+    hindiName: 'ज्योतिष एवं कुंडली मार्गदर्शन',
+    icon: 'Compass',
+    tagline: 'Get a Rudraksha recommendation based on your birth chart, not guesswork.',
+    heroImage: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=1200',
+    description: 'Every birth chart carries its own planetary configuration. Vedic astrologers traditionally recommend a specific Rudraksha to help balance the influence of a particular graha (planet) in a person\'s Kundli.',
+    whatItMeans: 'This path is for anyone who would rather have a recommendation rooted in their own birth details and a qualified astrologer\'s reading than choose a Mukhi on their own.',
+    recommendedRudraksha: ['Navgraha Rudraksha Mala', '5 Mukhi Rudraksha (Guru)', '8 Mukhi Rudraksha (Rahu)'],
+    recommendedGemstones: ['Navratna Bracelet / Ring', 'Blue Sapphire (Neelam)', 'Hessonite (Gomed)'],
+    recommendedYantras: ['Navgraha Yantra'],
+    recommendedPuja: ['Navgraha Shanti Puja', 'Kundli Dosha Nivaran Puja'],
+    faqs: [
+      {
+        question: 'How is a Rudraksha recommended based on my Kundli?',
+        answer: 'A Vedic astrologer reviews your birth details — date, time, and place of birth — and suggests a Rudraksha traditionally associated with balancing the relevant planetary placements in your chart.'
+      }
+    ]
+  },
+  {
+    id: 'daily-wear',
+    slug: 'daily-wear',
+    name: 'Everyday Rudraksha',
+    hindiName: 'दैनिक धारण योग्य रुद्राक्ष',
+    icon: 'Sun',
+    tagline: 'Simple, comfortable Rudraksha suited for regular, everyday wear.',
+    heroImage: 'https://images.unsplash.com/photo-1602523961358-f9f03ba1cd3a?auto=format&fit=crop&q=80&w=1200',
+    description: 'Not every Rudraksha needs to be tied to one specific ritual or intention. Many wearers simply choose a well-made, comfortable bead or mala to wear as part of an everyday routine.',
+    whatItMeans: 'This selection favours ease of wear — lighter beads, simpler malas, and designs that sit naturally with everyday clothing — over any single traditional association.',
+    recommendedRudraksha: ['1 Mukhi Rudraksha', '5 Mukhi Rudraksha', 'Single Bead Rudraksha Pendant'],
+    recommendedGemstones: ['Clear Quartz', 'Rose Quartz'],
+    recommendedYantras: [],
+    recommendedPuja: [],
+    faqs: [
+      {
+        question: 'Does an everyday Rudraksha need any special care?',
+        answer: 'Basic care is enough — keep it dry, avoid harsh soaps or perfumes on the bead, and remove it before swimming. See the Rudraksha Care guide for the complete routine.'
+      }
+    ]
   }
 ];

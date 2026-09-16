@@ -4,12 +4,12 @@ import { RudrakshaHero } from '../components/RudrakshaHero';
 import { RudrakshaQuickFinder } from '../components/RudrakshaQuickFinder';
 import { RudrakshaShopByMukhi } from '../components/RudrakshaShopByMukhi';
 import { RudrakshaBestsellers } from '../components/RudrakshaBestsellers';
+import { RudrakshaShopByPurpose } from '../components/RudrakshaShopByPurpose';
 
 // /rudraksha — the main Rudraksha landing page (per spec: Learn → Understand → Find Right
-// Rudraksha → Compare → Trust → Buy → Energization → Consultation). Built section by section;
-// Hero + Quick Finder are wired up so far. #shop-by-purpose and #shop-by-rashi are left as real
-// anchors so the Quick Finder's Purpose/Rashi picks already scroll to the right spot once those
-// sections land here next.
+// Rudraksha → Compare → Trust → Buy → Energization → Consultation). Built section by section.
+// #shop-by-rashi is left as a real anchor so the Quick Finder's "Choose by Rashi" pick already
+// scrolls to the right spot once that section lands here next.
 export const RudrakshaPage: React.FC = () => {
   const navigate = useNavigate();
 
@@ -36,7 +36,13 @@ export const RudrakshaPage: React.FC = () => {
           only the curated slug list swaps for a real collection fetch later. */}
       <RudrakshaBestsellers />
 
-      {/* Next up: Shop by Purpose, Shop by Rashi... */}
+      {/* Section 7 (spec): Shop By Purpose — "Choose Rudraksha by Your Intention". Every card
+          maps to a real /purpose/:slug page (src/data/purposeData.ts) via PURPOSE_LIST, and this
+          section's id="shop-by-purpose" is exactly what the Quick Finder above already scrolls
+          to for its "I Want Rudraksha for a Purpose" option — that flow is now fully wired. */}
+      <RudrakshaShopByPurpose onSelectPurpose={(purposeSlug) => navigate(`/purpose/${purposeSlug}`)} />
+
+      {/* Next up: Shop by Rashi... */}
     </div>
   );
 };

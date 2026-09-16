@@ -149,8 +149,12 @@ const BestsellerCard: React.FC<{ product: Product }> = ({ product }) => {
           </h3>
         </Link>
 
-        <div className="mt-auto pt-3 border-t border-vedic-beige flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-1.5 min-w-0">
+        {/* Price sits on its own line and the Add button goes full-width right below it on
+            narrow phones — a 2-column card is too tight for "₹1,240 ₹1,590 Add" to share one
+            row without the strikethrough price colliding with the button. From sm up (more
+            room per card) it goes back to one row, same as before. */}
+        <div className="mt-auto pt-3 border-t border-vedic-beige flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-baseline gap-1.5 min-w-0 flex-wrap">
             <span className="text-base sm:text-lg font-extrabold text-vedic-dark">
               ₹{product.price.toLocaleString('en-IN')}
             </span>
@@ -165,7 +169,7 @@ const BestsellerCard: React.FC<{ product: Product }> = ({ product }) => {
             onClick={handleAddToCart}
             disabled={!inStock}
             title="Add to Cart"
-            className="inline-flex items-center gap-1.5 bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory px-3.5 py-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent text-xs sm:text-sm font-bold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-vedic-gold/10 disabled:hover:text-vedic-maroon"
+            className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-1.5 bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory px-3.5 py-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent text-xs sm:text-sm font-bold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-vedic-gold/10 disabled:hover:text-vedic-maroon"
           >
             <ShoppingBag className="w-4 h-4" />
             Add
