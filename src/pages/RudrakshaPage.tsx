@@ -5,11 +5,12 @@ import { RudrakshaQuickFinder } from '../components/RudrakshaQuickFinder';
 import { RudrakshaShopByMukhi } from '../components/RudrakshaShopByMukhi';
 import { RudrakshaBestsellers } from '../components/RudrakshaBestsellers';
 import { RudrakshaShopByPurpose } from '../components/RudrakshaShopByPurpose';
+import { RudrakshaShopByRashi } from '../components/RudrakshaShopByRashi';
+import { RudrakshaShopByPlanet } from '../components/RudrakshaShopByPlanet';
+import { RudrakshaSpecialRudraksha } from '../components/RudrakshaSpecialRudraksha';
 
 // /rudraksha — the main Rudraksha landing page (per spec: Learn → Understand → Find Right
 // Rudraksha → Compare → Trust → Buy → Energization → Consultation). Built section by section.
-// #shop-by-rashi is left as a real anchor so the Quick Finder's "Choose by Rashi" pick already
-// scrolls to the right spot once that section lands here next.
 export const RudrakshaPage: React.FC = () => {
   const navigate = useNavigate();
 
@@ -42,7 +43,28 @@ export const RudrakshaPage: React.FC = () => {
           to for its "I Want Rudraksha for a Purpose" option — that flow is now fully wired. */}
       <RudrakshaShopByPurpose onSelectPurpose={(purposeSlug) => navigate(`/purpose/${purposeSlug}`)} />
 
-      {/* Next up: Shop by Rashi... */}
+      {/* Section 8 (spec): Shop By Rashi — "Rudraksha by Rashi". Data-driven via
+          rashiService.ts (12 cards today from RASHI_LIST, a live Shopify "rashi" metaobject
+          list later), same fetch/loading/empty-state pattern as Shop By Mukhi above. Every
+          card routes to the existing /rashi/:slug detail page, and this section's
+          id="shop-by-rashi" is exactly what the Quick Finder's "Choose by Rashi" option
+          already scrolls to — that flow is now fully wired too. */}
+      <RudrakshaShopByRashi onSelectRashi={(rashiSlug) => navigate(`/rashi/${rashiSlug}`)} />
+
+      {/* Section 9 (spec): Shop By Planet — "Rudraksha by Planet". Data-driven via
+          rudrakshaPlanetService.ts, which pairs the site's existing 9 Navagraha planets
+          (already used by /planets/:planetSlug on the Gemstone side) with whichever Mukhis are
+          currently associated with each, via getRudrakshaMukhiTiles(). Same fetch/loading/empty
+          pattern as the sections above, and shares one planet identity across the whole store. */}
+      <RudrakshaShopByPlanet onSelectPlanet={(planetSlug) => navigate(`/planets/${planetSlug}`)} />
+
+      {/* Section 10 (spec): Rare & Special Rudraksha — Gauri Shankar, Ganesha Rudraksha today.
+          Data-driven via getRudrakshaSpecialTiles() (rudrakshaCatalogService.ts), which reads
+          every non-numbered entry from RUDRAKSHA_MUKHI_LIST, so a future Garbh Gauri / Nag /
+          Nepal / Collector entry an admin adds shows up here automatically — no code changes. */}
+      <RudrakshaSpecialRudraksha onSelectSpecial={(slug) => navigate(`/products/${slug}`)} />
+
+      {/* Next up: Rudraksha Mala Collection... */}
     </div>
   );
 };

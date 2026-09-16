@@ -54,7 +54,7 @@ function buildDemoStartingPrice(mukhiNumber: number, slug: string): number {
 }
 
 /** Only the numbered 1–14 Mukhi entries — Gauri Shankar / Ganesha Rudraksha etc. belong to the
- *  future "Rare & Special Rudraksha" section (spec section 10), not this grid. */
+ *  "Rare & Special Rudraksha" section (spec section 10, see getRudrakshaSpecialTiles below). */
 function getNumberedMukhiEntries(): { mukhi: RudrakshaMukhi; mukhiNumber: number }[] {
   return RUDRAKSHA_MUKHI_LIST.map((mukhi) => {
     const match = mukhi.mukhi.match(/^(\d+)\s*Mukhi$/i);
@@ -62,6 +62,13 @@ function getNumberedMukhiEntries(): { mukhi: RudrakshaMukhi; mukhiNumber: number
   })
     .filter((entry): entry is { mukhi: RudrakshaMukhi; mukhiNumber: number } => entry !== null)
     .sort((a, b) => a.mukhiNumber - b.mukhiNumber);
+}
+
+/** The non-numbered entries — Ganesh Rudraksha, Gauri Shankar Rudraksha today, and whatever an
+ *  admin adds later (Garbh Gauri, Nag Rudraksha, etc.) picked up automatically since this just
+ *  filters out anything that parses as a plain "N Mukhi" entry. */
+function getSpecialMukhiEntries(): RudrakshaMukhi[] {
+  return RUDRAKSHA_MUKHI_LIST.filter((mukhi) => !/^\d+\s*Mukhi$/i.test(mukhi.mukhi));
 }
 
 /**
@@ -147,3 +154,73 @@ export async function getRudrakshaMukhiTiles(): Promise<RudrakshaMukhiTile[]> {
  *  the same slug format this service uses (kept local/self-contained, not shared across
  *  catalogs — mirrors how gemstoneCatalogService.ts keeps its own slugify). */
 export { slugify as slugifyMukhiName };
+
+/**
+ * Normalized shape every card in the "Rare & Special Rudraksha" grid
+ * (RudrakshaSpecialRudraksha.tsx, rendered on /rudraksha, spec section 10) is built from —
+ * deliberately lighter than RudrakshaMukhiTile (no rating/review count) since the spec calls
+ * for a simpler Image → Name → Short info → View card for this section.
+ */
+export interface RudrakshaSpecialTile {
+  id: string;
+  slug: string; // e.g. "gauri-shankar-rudraksha" — maps to /products/:slug today, a real Shopify product handle later
+  name: string; // e.g. "Gauri Shankar Rudraksha"
+  shortDescription: string;
+  image: string;
+  startingPrice: number;
+  rulingGod: string;
+}
+
+/** Demo-only starting price for special/rare Rudraksha — higher base than the numbered grid
+ *  (rarity commands a premium), deterministic per slug so it never reshuffles on re-render.
+ *  Replaced entirely by the real product price once Shopify is connected. */
+function buildDemoSpecialPrice(slug: string): number {
+  const h = hashHandle(`${slug}-special`);
+  const price = 3200 + (h % 4800); // a believable ₹3,200 – ₹8,000 rare-item range
+  return Math.round(price / 10) * 10;
+}
+
+function mapSpecialToTile(mukhi: RudrakshaMukhi): RudrakshaSpecialTile {
+  const slug = slugify(mukhi.mukhi);
+  return {
+    id: slug,
+    slug,
+    name: mukhi.mukhi,
+    shortDescription: mukhi.description,
+    image: mukhi.imageUrl,
+    startingPrice: buildDemoSpecialPrice(slug),
+    rulingGod: mukhi.rulingGod
+  };
+}
+
+/**
+ * ---------------------------------------------------------------------
+ * DATA SOURCE — this is the ONLY function that needs to change when Shopify is connected.
+ * Replace the body with a real Storefront API call, e.g. fetching a "rare-special-rudraksha"
+ * collection (or products tagged accordingly):
+ *
+ *   const products = await shopifyClient.collection.fetchByHandle('rare-special-rudraksha');
+ *   return products.map(mapShopifyProductToSpecialTile);
+ *
+ * As long as whatever you return matches the RudrakshaSpecialTile shape above,
+ * RudrakshaSpecialRudraksha.tsx keeps working exactly as it does today with demo data — no
+ * component changes needed. An admin adds a new rare/special entry (Garbh Gauri, Nag
+ * Rudraksha, Nepal Rudraksha, a Collector piece, etc.) by publishing a product with that tag;
+ * this grid only ever renders what's actually returned, so it appears automatically.
+ * ---------------------------------------------------------------------
+ */
+async function fetchRudrakshaSpecialTilesFromSource(): Promise<RudrakshaSpecialTile[]> {
+  // Demo/local data for now (the non-numbered entries in RUDRAKSHA_MUKHI_LIST).
+  return getSpecialMukhiEntries().map(mapSpecialToTile);
+}
+
+/** Public entry point used by the "Rare & Special Rudraksha" grid. */
+export async function getRudrakshaSpecialTiles(): Promise<RudrakshaSpecialTile[]> {
+  try {
+    return await fetchRudrakshaSpecialTilesFromSource();
+  } catch {
+    // Graceful degradation: any Shopify hiccup shows an empty grid (handled by the component's
+    // own empty state), never a visible error — same pattern used across the rest of the catalog.
+    return [];
+  }
+}
