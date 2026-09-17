@@ -44,6 +44,7 @@ import { PlanetGemstonesPage } from './pages/PlanetGemstonesPage';
 import { CertificationHubPage } from './pages/CertificationHubPage';
 import { CustomJewelleryPage } from './pages/CustomJewelleryPage';
 import { AdminPage } from './pages/AdminPage';
+import { BraceletsPage } from './pages/BraceletsPage';
 
 // Scroll to Top on route change
 const ScrollToTop = () => {
@@ -87,6 +88,9 @@ export const App: React.FC = () => {
                     <Route path="/search" element={<SearchPage />} />
 
                     {/* Collections */}
+                    {/* Dedicated Bracelets landing page (spec-driven, built section by section) —
+                        takes over from the generic CategoryPage for this one collection only. */}
+                    <Route path="/collections/bracelets" element={<BraceletsPage />} />
                     <Route path="/collections/:category" element={<CategoryPage />} />
                     <Route path="/collections/:category/:subcategory" element={<CategoryPage />} />
 

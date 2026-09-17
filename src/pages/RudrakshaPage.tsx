@@ -8,6 +8,15 @@ import { RudrakshaShopByPurpose } from '../components/RudrakshaShopByPurpose';
 import { RudrakshaShopByRashi } from '../components/RudrakshaShopByRashi';
 import { RudrakshaShopByPlanet } from '../components/RudrakshaShopByPlanet';
 import { RudrakshaSpecialRudraksha } from '../components/RudrakshaSpecialRudraksha';
+import { RudrakshaMala } from '../components/RudrakshaMala';
+import { RudrakshaJewellery } from '../components/RudrakshaJewellery';
+import { RudrakshaAuthenticity } from '../components/RudrakshaAuthenticity';
+import { RudrakshaWearAndEnergize } from '../components/RudrakshaWearAndEnergize';
+import { RudrakshaGuidanceCTA } from '../components/RudrakshaGuidanceCTA';
+import { RudrakshaReviews } from '../components/RudrakshaReviews';
+import { RudrakshaFAQ } from '../components/RudrakshaFAQ';
+import { RudrakshaLearnHub } from '../components/RudrakshaLearnHub';
+import { RudrakshaFinalCTA } from '../components/RudrakshaFinalCTA';
 
 // /rudraksha — the main Rudraksha landing page (per spec: Learn → Understand → Find Right
 // Rudraksha → Compare → Trust → Buy → Energization → Consultation). Built section by section.
@@ -64,7 +73,40 @@ export const RudrakshaPage: React.FC = () => {
           Nepal / Collector entry an admin adds shows up here automatically — no code changes. */}
       <RudrakshaSpecialRudraksha onSelectSpecial={(slug) => navigate(`/products/${slug}`)} />
 
-      {/* Next up: Rudraksha Mala Collection... */}
+      {/* Section 11 (spec): Rudraksha Mala Collection — a "shop by type" grid (5/6/7/8 Mukhi,
+          Combination, Japa, Premium). Kept separate from Jewellery below per spec. */}
+      <RudrakshaMala />
+
+      {/* Section 12 (spec): Rudraksha Jewellery — "Wear Rudraksha Your Way". Its own section
+          (bracelets/pendant/kavach types), plus the one real priced Kavach product the catalog
+          currently has, via getFeaturedRudrakshaJewelleryProduct(). */}
+      <RudrakshaJewellery />
+
+      {/* Sections 13 + 14 merged (spec): Trust points + Authenticity Guide teaser, linking to
+          the real /authenticity and /guides/rudraksha pages already built in this app. */}
+      <RudrakshaAuthenticity />
+
+      {/* Sections 15 + 16 merged (spec): How to Wear (5-step guide) + Energization service,
+          shown together since Energization is step 3 of the wearing process itself. */}
+      <RudrakshaWearAndEnergize />
+
+      {/* Sections 17 + 18 merged (spec): Astrologer Consultation + Rudraksha Recommendation
+          System — reuses the site's real FindMyProductModal (also used on the homepage) for
+          the recommendation flow, and /contact?subject=... for the astrologer consultation. */}
+      <RudrakshaGuidanceCTA />
+
+      {/* Section 23 (spec): Customer Reviews. */}
+      <RudrakshaReviews />
+
+      {/* Section 24 (spec): FAQ preview (5 of the spec's 14 questions) — full list on /faqs. */}
+      <RudrakshaFAQ />
+
+      {/* Sections 25 + 26 merged (spec): Education Hub + Blog, since both are the same teaser-
+          card format pointing at real content (guide, authenticity, blog, puja guide). */}
+      <RudrakshaLearnHub />
+
+      {/* Section 27 (spec): Final dark/premium closing CTA. */}
+      <RudrakshaFinalCTA onFindRudrakshaClick={scrollToQuickFinder} />
     </div>
   );
 };
