@@ -2,10 +2,10 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Compass, Sparkles, ShieldCheck, Phone, ArrowRight, HelpCircle, Star, CheckCircle2 } from 'lucide-react';
 import { RASHI_LIST, RashiDetail } from '../data/rashiData';
-import { MOCK_PRODUCTS } from '../data/products';
 import { ProductCard } from '../components/ProductCard';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { NotFoundPage } from './NotFoundPage';
+import { resolveRecommendedProducts } from '../utils/resolveRecommendedProducts';
 
 export const SingleRashiPage: React.FC = () => {
   const { rashi } = useParams<{ rashi: string }>();
@@ -18,8 +18,11 @@ export const SingleRashiPage: React.FC = () => {
     return <NotFoundPage />;
   }
 
-  // Filter products relevant to Rashi
-  const recommendedProducts = MOCK_PRODUCTS.slice(0, 8);
+  // Real products matching this Rashi's recommended Rudraksha + gemstone copy — dynamic per Rashi.
+  const recommendedProducts = resolveRecommendedProducts({
+    rudrakshaText: currentRashi.recommendedRudraksha,
+    gemstoneText: currentRashi.recommendedGemstone
+  });
 
   const relatedRashis = RASHI_LIST.filter((r) => r.id !== currentRashi.id).slice(0, 4);
 
@@ -31,9 +34,20 @@ export const SingleRashiPage: React.FC = () => {
       </div>
 
       {/* 02. Rashi Hero */}
-      <section className="relative bg-vedic-brown text-vedic-ivory py-16 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 text-center space-y-4 relative z-10">
-          <div className="w-20 h-20 rounded-full bg-vedic-gold/20 text-vedic-gold flex items-center justify-center text-5xl font-serif mx-auto border border-vedic-gold/40 shadow-xl">
+      <section className="relative bg-vedic-brown text-vedic-ivory py-20 overflow-hidden">
+        <div className="absolute inset-0">
+          <img
+            src={currentRashi.imageUrl}
+            alt={currentRashi.nameEn}
+            className="w-full h-full object-cover"
+            loading="eager"
+          />
+          <div className="absolute inset-0 bg-vedic-brown/80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-vedic-brown via-transparent to-vedic-brown/40" />
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 text-center space-y-4">
+          <div className="w-20 h-20 rounded-full bg-vedic-gold/15 text-vedic-gold flex items-center justify-center text-5xl font-serif mx-auto border border-vedic-gold/40 shadow-xl backdrop-blur-sm">
             {currentRashi.symbol}
           </div>
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Heart, ShoppingBag, Sparkles } from 'lucide-react';
+import { ArrowRight, Heart, Sparkles } from 'lucide-react';
 import {
   getRudrakshaSpecialTiles,
   getRudrakshaSpecialSectionContent,
@@ -8,8 +8,8 @@ import {
   RudrakshaSpecialSectionContent
 } from '../services/rudrakshaCatalogService';
 import { Product } from '../types/ecommerce';
-import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { AddToCartControl } from './AddToCartControl';
 
 export interface RudrakshaSpecialRudrakshaProps {
   /** Fires with the special Rudraksha's slug chosen (e.g. "gauri-shankar-rudraksha").
@@ -62,7 +62,6 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
   const [tiles, setTiles] = useState<RudrakshaSpecialTile[]>([]);
   const [content, setContent] = useState<RudrakshaSpecialSectionContent>(DEFAULT_SECTION_CONTENT);
   const [isLoading, setIsLoading] = useState(true);
-  const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
   useEffect(() => {
@@ -159,12 +158,6 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
                 toggleWishlist(product);
               };
 
-              const handleAddToCart = (e: React.MouseEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
-                addToCart(product, 1);
-              };
-
               const imageBlock = (
                 <img
                   src={tile.image}
@@ -246,14 +239,11 @@ export const RudrakshaSpecialRudraksha: React.FC<RudrakshaSpecialRudrakshaProps>
                         ₹{tile.startingPrice.toLocaleString('en-IN')}
                       </span>
 
-                      <button
-                        onClick={handleAddToCart}
-                        title="Add to Cart"
-                        className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-1.5 bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory px-3.5 py-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent text-xs sm:text-sm font-bold shrink-0"
-                      >
-                        <ShoppingBag className="w-4 h-4" />
-                        Add
-                      </button>
+                      <AddToCartControl
+                        product={product}
+                        size="full"
+                        className="w-full sm:w-auto justify-center sm:justify-start"
+                      />
                     </div>
                   </div>
                 </div>

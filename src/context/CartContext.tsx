@@ -18,6 +18,10 @@ interface CartContextType {
   applyCoupon: (code: string) => { success: boolean; message: string };
   removeCoupon: () => void;
   grandTotal: number;
+  /** The most recently added item, used to drive the bottom "Item Added to Cart" toast
+   *  (CartAddedToast.tsx) instead of force-opening the cart drawer on every add. */
+  justAdded: { product: Product; quantity: number } | null;
+  dismissJustAdded: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -34,6 +38,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [justAdded, setJustAdded] = useState<{ product: Product; quantity: number } | null>(null);
+  const justAddedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const freeShippingThreshold = 999;
 
@@ -44,6 +50,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Failed to save cart', e);
     }
   }, [cart]);
+
+  useEffect(() => {
+    return () => {
+      if (justAddedTimerRef.current) clearTimeout(justAddedTimerRef.current);
+    };
+  }, []);
+
+  const dismissJustAdded = () => {
+    if (justAddedTimerRef.current) {
+      clearTimeout(justAddedTimerRef.current);
+      justAddedTimerRef.current = null;
+    }
+    setJustAdded(null);
+  };
 
   const addToCart = (product: Product, quantity = 1, selectedVariant?: ProductVariant, selectedSize?: string) => {
     setCart((prev) => {
@@ -57,7 +77,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return [...prev, { product, quantity, selectedVariant, selectedSize }];
     });
-    setIsCartOpen(true);
+
+    // Instead of force-opening the cart drawer, surface a dismissible bottom toast
+    // (CartAddedToast.tsx) with a "View Cart" action — the drawer only opens if the person
+    // chooses to. Re-triggers cleanly even if the previous toast hadn't finished dismissing.
+    if (justAddedTimerRef.current) clearTimeout(justAddedTimerRef.current);
+    setJustAdded({ product, quantity });
+    justAddedTimerRef.current = setTimeout(() => {
+      setJustAdded(null);
+      justAddedTimerRef.current = null;
+    }, 4000);
   };
 
   const removeFromCart = (productId: string) => {
@@ -135,6 +164,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         applyCoupon,
         removeCoupon,
         grandTotal,
+        justAdded,
+        dismissJustAdded,
       }}
     >
       {children}

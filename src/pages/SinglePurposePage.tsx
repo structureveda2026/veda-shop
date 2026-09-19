@@ -2,10 +2,10 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Sparkles, ShieldCheck, Compass, ArrowRight, HelpCircle, Phone, CheckCircle2 } from 'lucide-react';
 import { PURPOSE_LIST } from '../data/purposeData';
-import { MOCK_PRODUCTS } from '../data/products';
 import { ProductCard } from '../components/ProductCard';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { NotFoundPage } from './NotFoundPage';
+import { resolveRecommendedProducts } from '../utils/resolveRecommendedProducts';
 
 export const SinglePurposePage: React.FC = () => {
   const { purposeId } = useParams<{ purposeId: string }>();
@@ -18,8 +18,11 @@ export const SinglePurposePage: React.FC = () => {
     return <NotFoundPage />;
   }
 
-  // Filter products relevant to purpose
-  const recommendedProducts = MOCK_PRODUCTS.slice(0, 8);
+  // Real products matching this purpose's recommended Rudraksha + gemstones — dynamic per purpose.
+  const recommendedProducts = resolveRecommendedProducts({
+    rudrakshaText: purpose.recommendedRudraksha,
+    gemstoneText: purpose.recommendedGemstones
+  });
 
   return (
     <div className="space-y-12 pb-16 bg-vedic-ivory text-vedic-dark">
@@ -29,11 +32,13 @@ export const SinglePurposePage: React.FC = () => {
       </div>
 
       {/* Purpose Hero Section */}
-      <section className="relative bg-vedic-brown text-vedic-ivory py-16 overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
-          <img src={purpose.heroImage} alt={purpose.name} className="w-full h-full object-cover" />
+      <section className="relative bg-vedic-brown text-vedic-ivory py-20 overflow-hidden">
+        <div className="absolute inset-0">
+          <img src={purpose.heroImage} alt={purpose.name} className="w-full h-full object-cover" loading="eager" />
+          <div className="absolute inset-0 bg-vedic-brown/80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-vedic-brown via-transparent to-vedic-brown/40" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 text-center space-y-4">
+        <div className="relative max-w-4xl mx-auto px-4 text-center space-y-4">
           <span className="inline-flex items-center gap-1.5 bg-vedic-gold/20 text-vedic-gold border border-vedic-gold/40 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
             <Sparkles className="w-3.5 h-3.5" /> Intentional Vedic Remedy
           </span>

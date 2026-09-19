@@ -28,6 +28,10 @@ export interface PlanetGemstoneInfo {
   slug: string;
   planetName: string;
   symbol: string;
+  /** Demo hero banner image for /planets/:planetSlug (both the Gemstone and Rudraksha views).
+   *  Swap for a real per-planet image from Shopify/CMS once connected — everything that reads
+   *  this field (PlanetGemstonesPage.tsx) needs no change either way. */
+  bannerImage: string;
   primaryGemstone: string;
   primaryGemstoneSlug: string;
   alternativeGemstones: string[];
@@ -341,6 +345,7 @@ export const PLANET_LIST: PlanetGemstoneInfo[] = [
     slug: 'sun',
     planetName: 'Sun (Surya Dev)',
     symbol: '☀️',
+    bannerImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1200',
     primaryGemstone: 'Ruby (Manik)',
     primaryGemstoneSlug: 'ruby',
     alternativeGemstones: ['Red Garnet', 'Sunstone'],
@@ -352,6 +357,7 @@ export const PLANET_LIST: PlanetGemstoneInfo[] = [
     slug: 'moon',
     planetName: 'Moon (Chandra Dev)',
     symbol: '🌙',
+    bannerImage: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=1200',
     primaryGemstone: 'Natural Pearl (Moti)',
     primaryGemstoneSlug: 'pearl',
     alternativeGemstones: ['Moonstone', 'White Sapphire'],
@@ -363,6 +369,7 @@ export const PLANET_LIST: PlanetGemstoneInfo[] = [
     slug: 'mars',
     planetName: 'Mars (Mangal Dev)',
     symbol: '♂',
+    bannerImage: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&q=80&w=1200',
     primaryGemstone: 'Red Coral (Moonga)',
     primaryGemstoneSlug: 'red-coral',
     alternativeGemstones: ['Red Carnelian', 'Red Jasper'],
@@ -374,6 +381,7 @@ export const PLANET_LIST: PlanetGemstoneInfo[] = [
     slug: 'mercury',
     planetName: 'Mercury (Budh Dev)',
     symbol: '☿',
+    bannerImage: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=1200',
     primaryGemstone: 'Emerald (Panna)',
     primaryGemstoneSlug: 'emerald',
     alternativeGemstones: ['Peridot', 'Green Tourmaline', 'Green Aventurine'],
@@ -385,6 +393,7 @@ export const PLANET_LIST: PlanetGemstoneInfo[] = [
     slug: 'jupiter',
     planetName: 'Jupiter (Guru Dev)',
     symbol: '♃',
+    bannerImage: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&q=80&w=1200',
     primaryGemstone: 'Yellow Sapphire (Pukhraj)',
     primaryGemstoneSlug: 'yellow-sapphire',
     alternativeGemstones: ['Yellow Topaz', 'Citrine'],
@@ -396,6 +405,7 @@ export const PLANET_LIST: PlanetGemstoneInfo[] = [
     slug: 'venus',
     planetName: 'Venus (Shukra Dev)',
     symbol: '♀',
+    bannerImage: 'https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&q=80&w=1200',
     primaryGemstone: 'Diamond / White Zircon (Heera)',
     primaryGemstoneSlug: 'diamond',
     alternativeGemstones: ['White Zircon', 'Opal'],
@@ -407,6 +417,7 @@ export const PLANET_LIST: PlanetGemstoneInfo[] = [
     slug: 'saturn',
     planetName: 'Saturn (Shani Dev)',
     symbol: '♄',
+    bannerImage: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&q=80&w=1200',
     primaryGemstone: 'Blue Sapphire (Neelam)',
     primaryGemstoneSlug: 'blue-sapphire',
     alternativeGemstones: ['Amethyst', 'Blue Spinel', 'Lapis Lazuli'],
@@ -418,6 +429,7 @@ export const PLANET_LIST: PlanetGemstoneInfo[] = [
     slug: 'rahu',
     planetName: 'Rahu (North Node)',
     symbol: '☊',
+    bannerImage: 'https://images.unsplash.com/photo-1604881991720-f91add269bed?auto=format&fit=crop&q=80&w=1200',
     primaryGemstone: 'Hessonite (Gomed)',
     primaryGemstoneSlug: 'hessonite',
     alternativeGemstones: ['Honey Spessartine'],
@@ -429,6 +441,7 @@ export const PLANET_LIST: PlanetGemstoneInfo[] = [
     slug: 'ketu',
     planetName: 'Ketu (South Node)',
     symbol: '☋',
+    bannerImage: 'https://images.unsplash.com/photo-1602523961358-f9f03ba1cd3a?auto=format&fit=crop&q=80&w=1200',
     primaryGemstone: 'Cat\'s Eye (Lehsunia)',
     primaryGemstoneSlug: 'cats-eye',
     alternativeGemstones: ['Turquoise', 'Tiger Eye'],

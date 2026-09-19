@@ -65,7 +65,7 @@ export const RudrakshaPage: React.FC = () => {
           (already used by /planets/:planetSlug on the Gemstone side) with whichever Mukhis are
           currently associated with each, via getRudrakshaMukhiTiles(). Same fetch/loading/empty
           pattern as the sections above, and shares one planet identity across the whole store. */}
-      <RudrakshaShopByPlanet onSelectPlanet={(planetSlug) => navigate(`/planets/${planetSlug}`)} />
+      <RudrakshaShopByPlanet onSelectPlanet={(planetSlug) => navigate(`/planets/${planetSlug}?category=rudraksha`)} />
 
       {/* Section 10 (spec): Rare & Special Rudraksha — Gauri Shankar, Ganesha Rudraksha today.
           Data-driven via getRudrakshaSpecialTiles() (rudrakshaCatalogService.ts), which reads

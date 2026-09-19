@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Heart, Eye, ShoppingBag, ShieldCheck, MapPin, Award } from 'lucide-react';
+import { Star, Heart, Eye, ShieldCheck, MapPin, Award } from 'lucide-react';
 import { Product } from '../types/ecommerce';
-import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useUnit } from '../context/UnitContext';
 import { QuickViewModal } from './QuickViewModal';
+import { AddToCartControl } from './AddToCartControl';
 
 interface ProductCardProps {
   product: Product;
@@ -15,7 +15,6 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product, showPrice = true }) => {
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { formatWeight } = useUnit();
 
@@ -136,7 +135,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, showPrice = t
           </div>
 
           {showPrice ? (
-            <div className="mt-3 pt-2 border-t border-vedic-beige flex items-center justify-between">
+            <div className="mt-3 pt-2 border-t border-vedic-beige flex items-center justify-between flex-wrap gap-2">
               <div>
                 <div className="flex items-baseline gap-1.5">
                   <span className="text-sm md:text-base font-extrabold text-vedic-maroon">
@@ -150,14 +149,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, showPrice = t
                 </div>
               </div>
 
-              <button
-                onClick={() => addToCart(product, 1)}
-                className="bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory p-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent flex items-center gap-1 text-xs font-bold"
-                title="Add to Cart"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                <span className="hidden sm:inline">Add</span>
-              </button>
+              <AddToCartControl product={product} disabled={product.stock === 0} />
             </div>
           ) : (
             <div className="mt-3 pt-2 border-t border-vedic-beige text-center">

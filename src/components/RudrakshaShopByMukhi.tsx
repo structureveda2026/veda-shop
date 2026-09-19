@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Hash, Heart, ShoppingBag, Star, X } from 'lucide-react';
+import { ArrowRight, Hash, Heart, Star, X } from 'lucide-react';
 import { getRudrakshaMukhiTiles, RudrakshaMukhiTile } from '../services/rudrakshaCatalogService';
 import { Product } from '../types/ecommerce';
-import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { AddToCartControl } from './AddToCartControl';
 
 export interface RudrakshaShopByMukhiProps {
   /** Fires with the Mukhi number (1–14) chosen — from a grid card or the "Find Your Mukhi"
@@ -54,7 +54,6 @@ export const RudrakshaShopByMukhi: React.FC<RudrakshaShopByMukhiProps> = ({ onSe
   const [tiles, setTiles] = useState<RudrakshaMukhiTile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFinderOpen, setIsFinderOpen] = useState(false);
-  const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
   useEffect(() => {
@@ -152,13 +151,6 @@ export const RudrakshaShopByMukhi: React.FC<RudrakshaShopByMukhiProps> = ({ onSe
                 e.preventDefault();
                 e.stopPropagation();
                 toggleWishlist(product);
-              };
-
-              const handleAddToCart = (e: React.MouseEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (!tile.inStock) return;
-                addToCart(product, 1);
               };
 
               const imageBlock = (
@@ -272,15 +264,12 @@ export const RudrakshaShopByMukhi: React.FC<RudrakshaShopByMukhiProps> = ({ onSe
                         )}
                       </div>
 
-                      <button
-                        onClick={handleAddToCart}
+                      <AddToCartControl
+                        product={product}
                         disabled={!tile.inStock}
-                        title="Add to Cart"
-                        className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-1.5 bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory px-3.5 py-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent text-xs sm:text-sm font-bold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-vedic-gold/10 disabled:hover:text-vedic-maroon"
-                      >
-                        <ShoppingBag className="w-4 h-4" />
-                        Add
-                      </button>
+                        size="full"
+                        className="w-full sm:w-auto justify-center sm:justify-start"
+                      />
                     </div>
                   </div>
                 </div>
