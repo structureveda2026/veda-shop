@@ -6,10 +6,13 @@ import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
+import { AddToCartControl } from '../components/AddToCartControl';
+import { ProductGallery } from '../components/ProductGallery';
 import { CertificateViewerModal } from '../components/CertificateViewerModal';
 import { FindMyGemstoneModal } from '../components/FindMyGemstoneModal';
+import { FindMyProductModal } from '../components/FindMyProductModal';
 import {
-  Star, ShieldCheck, Truck, Heart, ShoppingBag, ArrowRight, CheckCircle2,
+  Star, ShieldCheck, Truck, Heart, ArrowRight, CheckCircle2,
   Sparkles, Share2, Info, HelpCircle, Phone, FileText, Lock, Compass
 } from 'lucide-react';
 
@@ -19,7 +22,6 @@ export const ProductDetailPage: React.FC = () => {
 
   const product = MOCK_PRODUCTS.find((p) => p.slug === slug) || MOCK_PRODUCTS[0];
 
-  const [selectedImage, setSelectedImage] = useState(product.images[0]);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'about' | 'specifications' | 'howToWear' | 'care' | 'reviews'>('about');
 
@@ -30,13 +32,12 @@ export const ProductDetailPage: React.FC = () => {
   const [isCertViewerOpen, setIsCertViewerOpen] = useState(false);
   const [isFinderOpen, setIsFinderOpen] = useState(false);
 
-  const { addToCart } = useCart();
+  const { addToCart, getCartLine } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addRecentlyViewed } = useRecentlyViewed();
 
   useEffect(() => {
     if (product) {
-      setSelectedImage(product.images[0]);
       addRecentlyViewed(product);
       window.scrollTo(0, 0);
     }
@@ -44,13 +45,15 @@ export const ProductDetailPage: React.FC = () => {
 
   const isLiked = isInWishlist(product.id);
   const isGemstone = product.category === 'gemstones';
+  // Rudraksha products (incl. kavach / rakhis) get Rudraksha wording + the Rudraksha finder in the guidance box.
+  const isRudraksha = product.category.startsWith('rudraksha');
 
-  const handleAddToCart = () => {
-    addToCart(product, quantity, undefined, isGemstone ? gemOption : undefined);
-  };
+  // The line this page's Add control works on: for gemstones each setting/fitting is its own line.
+  const cartLineOption = isGemstone ? gemOption : undefined;
 
   const handleBuyNow = () => {
-    handleAddToCart();
+    // Already in the cart (its stepper is showing) → go straight to checkout instead of adding one more.
+    if (!getCartLine(product.id, cartLineOption)) addToCart(product, quantity, undefined, cartLineOption);
     navigate('/checkout');
   };
 
@@ -70,7 +73,11 @@ export const ProductDetailPage: React.FC = () => {
         weight={`${product.carat || 2.25} Carat`}
         treatment={product.treatment || 'No indications of heating observed / Untreated'}
       />
-      <FindMyGemstoneModal isOpen={isFinderOpen} onClose={() => setIsFinderOpen(false)} />
+      {isRudraksha ? (
+        <FindMyProductModal isOpen={isFinderOpen} onClose={() => setIsFinderOpen(false)} />
+      ) : (
+        <FindMyGemstoneModal isOpen={isFinderOpen} onClose={() => setIsFinderOpen(false)} />
+      )}
 
       {/* Breadcrumb */}
       <Breadcrumb
@@ -82,43 +89,35 @@ export const ProductDetailPage: React.FC = () => {
 
       {/* Main Product Hero Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        {/* Left Column: Image Gallery (6 Cols) */}
-        <div className="lg:col-span-6 space-y-4">
-          <div className="aspect-square rounded-3xl overflow-hidden bg-white border border-vedic-gold/30 shadow-card relative group flex items-center justify-center p-3">
-            <img
-              src={selectedImage}
-              alt={product.title}
-              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 rounded-2xl"
-            />
-            {product.discount > 0 && (
-              <span className="absolute top-4 left-4 bg-vedic-maroon text-vedic-goldLight text-xs font-bold px-3 py-1 rounded-full shadow-md">
-                {product.discount}% OFF
-              </span>
-            )}
-            <button
-              onClick={() => toggleWishlist(product)}
-              className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-2.5 rounded-full shadow-md text-vedic-maroon hover:bg-vedic-gold transition-colors"
-            >
-              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-600' : ''}`} />
-            </button>
-          </div>
-
-          {/* Thumbnails */}
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-            {product.images.map((img, idx) => (
-              <button
-                key={idx}
-                onClick={() => setSelectedImage(img)}
-                className={`w-20 h-20 rounded-2xl overflow-hidden border-2 shrink-0 transition-all bg-white p-1 ${
-                  selectedImage === img
-                    ? 'border-vedic-gold scale-95 shadow-md ring-2 ring-vedic-gold/40'
-                    : 'border-vedic-beige opacity-70 hover:opacity-100'
-                }`}
-              >
-                <img src={img} alt="" className="w-full h-full object-contain rounded-xl" />
-              </button>
-            ))}
-          </div>
+        {/* Left Column: Image Gallery (6 Cols) — on desktop it stretches to the height of the info card
+            beside it, so there's no empty space left under the picture. */}
+        <div className="lg:col-span-6 space-y-4 lg:self-stretch lg:flex lg:flex-col">
+          {/* Thumbnails (left, vertical) + main image/video. Images & videos come from the product's
+              Shopify media when Shopify is enabled; each one can be opened in full view. */}
+          <ProductGallery
+            key={product.id}
+            className="lg:flex-1 lg:min-h-0"
+            title={product.title}
+            handle={product.slug}
+            images={product.images}
+            videos={product.videos}
+            overlay={
+              <>
+                {product.discount > 0 && (
+                  <span className="absolute top-4 left-4 bg-vedic-maroon text-vedic-goldLight text-xs font-bold px-3 py-1 rounded-full shadow-md">
+                    {product.discount}% OFF
+                  </span>
+                )}
+                <button
+                  onClick={() => toggleWishlist(product)}
+                  aria-label={isLiked ? 'Remove from wishlist' : 'Add to wishlist'}
+                  className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-2.5 rounded-full shadow-md text-vedic-maroon hover:bg-vedic-gold transition-colors"
+                >
+                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-600' : ''}`} />
+                </button>
+              </>
+            }
+          />
 
           {/* Lab Certificate Preview Trigger for Gemstones */}
           {isGemstone && (
@@ -205,7 +204,10 @@ export const ProductDetailPage: React.FC = () => {
             </span>
           </div>
 
-          {/* Select Your Option (Part 4) */}
+          {/* Select Your Option (Part 4) — Setting / Fitting selector temporarily disabled.
+              gemOption keeps its default ("Loose Stone"), so cart lines are unchanged.
+              To bring it back, remove this comment wrapper. */}
+          {/*
           <div className="space-y-2 border-t border-vedic-beige pt-4">
             <label className="block text-xs font-bold text-vedic-dark uppercase tracking-wider">
               Select Setting / Fitting Option:
@@ -227,23 +229,24 @@ export const ProductDetailPage: React.FC = () => {
               ))}
             </div>
           </div>
+          */}
 
           {/* Astrological Guidance Box */}
           <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 space-y-2">
             <h4 className="font-serif font-bold text-xs text-amber-900 flex items-center gap-1.5">
-              <Compass className="w-4 h-4 text-vedic-gold" /> Is this gemstone right for you?
+              <Compass className="w-4 h-4 text-vedic-gold" /> Is this {isRudraksha ? 'Rudraksha' : 'gemstone'} right for you?
             </h4>
             <p className="text-[11px] text-amber-900 leading-snug">
-              Gemstone suitability depends on individual astrological factors. Get personalized guidance before purchase.
+              {isRudraksha ? 'Rudraksha' : 'Gemstone'} suitability depends on individual astrological factors. Get personalized guidance before purchase.
             </p>
             <div className="flex gap-3 pt-1 text-xs">
               <button
                 onClick={() => setIsFinderOpen(true)}
                 className="font-bold text-vedic-maroon hover:underline"
               >
-                CHECK MY GEMSTONE →
+                CHECK MY {isRudraksha ? 'RUDRAKSHA' : 'GEMSTONE'} →
               </button>
-              <Link to="/contact?subject=Gemstone%20Consultation" className="font-bold text-vedic-goldDark hover:underline">
+              <Link to={`/contact?subject=${isRudraksha ? 'Rudraksha' : 'Gemstone'}%20Consultation`} className="font-bold text-vedic-goldDark hover:underline">
                 CONSULT ASTROLOGER →
               </Link>
             </div>
@@ -256,13 +259,16 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Add to Cart & Buy Now Buttons */}
           <div className="space-y-3 pt-2">
-            <div className="flex gap-3">
-              <button
-                onClick={handleAddToCart}
-                className="flex-1 bg-vedic-maroon text-vedic-ivory py-3.5 rounded-full font-serif font-bold text-xs shadow-lg hover:bg-vedic-maroonDark transition-all flex items-center justify-center gap-2"
-              >
-                <ShoppingBag className="w-4 h-4 text-vedic-gold" /> ADD TO CART
-              </button>
+            <div className="flex items-center gap-3">
+              <AddToCartControl
+                product={product}
+                size="cta"
+                appearance="solid"
+                label="ADD TO CART"
+                selectedSize={cartLineOption}
+                className="flex-1"
+                buttonClassName="py-3.5 rounded-full font-serif shadow-lg gap-2"
+              />
               <button
                 onClick={handleBuyNow}
                 className="flex-1 bg-gold-gradient text-vedic-dark py-3.5 rounded-full font-serif font-bold text-xs shadow-lg hover:brightness-105 transition-all flex items-center justify-center gap-2"
@@ -362,12 +368,14 @@ export const ProductDetailPage: React.FC = () => {
           </span>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handleAddToCart}
-            className="bg-vedic-maroon text-vedic-ivory text-xs font-bold px-4 py-2.5 rounded-full shadow"
-          >
-            ADD TO CART
-          </button>
+          <AddToCartControl
+            product={product}
+            size="cta"
+            appearance="solid"
+            label="ADD TO CART"
+            selectedSize={cartLineOption}
+            buttonClassName="px-4 py-2.5 rounded-full shadow"
+          />
           <button
             onClick={handleBuyNow}
             className="bg-vedic-gold text-vedic-dark text-xs font-bold px-4 py-2.5 rounded-full shadow"

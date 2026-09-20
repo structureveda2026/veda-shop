@@ -4,7 +4,6 @@ import {
   Heart,
   Share2,
   ShieldCheck,
-  ShoppingBag,
   Truck,
   Gem as GemIcon,
   Circle,
@@ -33,6 +32,8 @@ import {
 } from '../services/gemstoneCatalogService';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { AddToCartControl } from '../components/AddToCartControl';
+import type { Product } from '../types/ecommerce';
 
 /** "Select for Ring / Pendant / Bracelet" style fitting options (mirrors the reference PDP). */
 const FITTING_OPTIONS: { key: string; label: string; icon: React.ReactNode }[] = [
@@ -116,7 +117,7 @@ function getExpectedDispatchDate(): string {
 export const GemstoneListingDetailPage: React.FC = () => {
   const { slug, productId } = useParams<{ slug: string; productId: string }>();
   const navigate = useNavigate();
-  const { addToCart, setIsCartOpen } = useCart();
+  const { addToCart, getCartLine } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
   const gem = useMemo(() => GEMSTONE_CATALOG_DATA.find((g) => g.slug === slug) || null, [slug]);
@@ -297,15 +298,10 @@ export const GemstoneListingDetailPage: React.FC = () => {
     return true;
   };
 
-  const handleAddToCart = () => {
-    if (!validateSelections()) return;
-    addToCart(cartPayload as any, 1, undefined, fitting);
-    setIsCartOpen(true);
-  };
-
   const handleBuyNow = () => {
     if (!validateSelections()) return;
-    addToCart(cartPayload as any, 1, undefined, fitting);
+    // Already in the cart (its stepper is showing) → go straight to checkout instead of adding one more.
+    if (!getCartLine(cartPayload.id, fitting)) addToCart(cartPayload as any, 1, undefined, fitting);
     navigate('/checkout');
   };
 
@@ -797,15 +793,18 @@ export const GemstoneListingDetailPage: React.FC = () => {
             )}
 
             {/* Add to Cart / Buy Now */}
-            <div className="hidden md:grid grid-cols-2 gap-3 pt-2">
-              <button
-                onClick={handleAddToCart}
+            <div className="hidden md:grid grid-cols-2 items-center gap-3 pt-2">
+              <AddToCartControl
+                product={cartPayload as unknown as Product}
+                size="cta"
+                appearance="solid"
+                label="ADD TO CART"
+                disabledLabel="SOLD OUT"
                 disabled={!product.inStock}
-                className="py-3.5 rounded-full font-serif font-bold text-xs bg-vedic-maroon text-vedic-ivory shadow-lg hover:bg-vedic-maroonDark transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ShoppingBag className="w-4 h-4 text-vedic-gold" />
-                {product.inStock ? 'ADD TO CART' : 'SOLD OUT'}
-              </button>
+                selectedSize={fitting}
+                beforeAdd={validateSelections}
+                buttonClassName="py-3.5 rounded-full font-serif shadow-lg gap-2"
+              />
               <button
                 onClick={handleBuyNow}
                 disabled={!product.inStock}
@@ -891,13 +890,17 @@ export const GemstoneListingDetailPage: React.FC = () => {
           </span>
         </div>
         <div className="flex gap-2 shrink-0">
-          <button
-            onClick={handleAddToCart}
+          <AddToCartControl
+            product={cartPayload as unknown as Product}
+            size="cta"
+            appearance="solid"
+            label="ADD TO CART"
+            disabledLabel="SOLD OUT"
             disabled={!product.inStock}
-            className="bg-vedic-maroon text-vedic-ivory text-xs font-bold px-4 py-2.5 rounded-full shadow disabled:opacity-40"
-          >
-            ADD TO CART
-          </button>
+            selectedSize={fitting}
+            beforeAdd={validateSelections}
+            buttonClassName="px-4 py-2.5 rounded-full shadow"
+          />
           <button
             onClick={handleBuyNow}
             disabled={!product.inStock}

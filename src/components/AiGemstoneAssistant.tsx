@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Sparkles, ShoppingBag, MessageSquare, RefreshCw } from 'lucide-react';
+import { Bot, X, Send, Sparkles, MessageSquare, RefreshCw } from 'lucide-react';
 import { AiChatMessage } from '../types/gemstone';
 import { GEMSTONE_PRODUCTS_LIST } from '../data/gemstoneData';
-import { useCart } from '../context/CartContext';
+import { AddToCartControl } from './AddToCartControl';
 
 const QUICK_PROMPTS = [
   'Which gemstone is recommended for me?',
@@ -13,7 +13,6 @@ const QUICK_PROMPTS = [
 ];
 
 export const AiGemstoneAssistant: React.FC = () => {
-  const { addToCart } = useCart();
   const [isOpen, setIsOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [messages, setMessages] = useState<AiChatMessage[]>([
@@ -154,12 +153,14 @@ export const AiGemstoneAssistant: React.FC = () => {
                             <span className="text-[10px] font-bold text-vedic-gold">₹{prod.price.toLocaleString()}</span>
                           </div>
                         </div>
-                        <button
-                          onClick={() => addToCart(prod)}
-                          className="bg-gold-gradient text-vedic-dark text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0 flex items-center gap-1 hover:scale-105"
-                        >
-                          <ShoppingBag className="w-3 h-3" /> Buy
-                        </button>
+                        <AddToCartControl
+                          product={prod}
+                          size="full"
+                          appearance="gold"
+                          label="Buy"
+                          className="shrink-0"
+                          buttonClassName="text-[10px] px-2.5 py-1 rounded-lg"
+                        />
                       </div>
                     ))}
                   </div>

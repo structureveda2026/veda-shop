@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { X, Star, ShieldCheck, ShoppingBag, Heart, ArrowRight } from 'lucide-react';
+import { X, Star, ShieldCheck, Heart } from 'lucide-react';
 import { Product } from '../types/ecommerce';
-import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { Link } from 'react-router-dom';
+import { AddToCartControl } from './AddToCartControl';
 
 interface QuickViewModalProps {
   product: Product;
@@ -12,18 +12,11 @@ interface QuickViewModalProps {
 
 export const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose }) => {
   const [selectedImage, setSelectedImage] = useState(product.images[0]);
-  const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState(product.sizes ? product.sizes[0] : undefined);
-  
-  const { addToCart } = useCart();
+
   const { toggleWishlist, isInWishlist } = useWishlist();
 
   const isLiked = isInWishlist(product.id);
-
-  const handleAddToCart = () => {
-    addToCart(product, quantity, undefined, selectedSize);
-    onClose();
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -140,28 +133,16 @@ export const QuickViewModal: React.FC<QuickViewModalProps> = ({ product, onClose
           {/* Actions */}
           <div className="space-y-3 pt-4 border-t border-vedic-beige">
             <div className="flex items-center gap-3">
-              <div className="flex items-center border border-vedic-gold/30 rounded-xl bg-vedic-ivory p-1">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-2 py-1 text-vedic-dark font-bold hover:text-vedic-maroon"
-                >
-                  -
-                </button>
-                <span className="px-3 text-xs font-bold text-vedic-dark">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="px-2 py-1 text-vedic-dark font-bold hover:text-vedic-maroon"
-                >
-                  +
-                </button>
-              </div>
-
-              <button
-                onClick={handleAddToCart}
-                className="flex-1 bg-vedic-maroon text-vedic-ivory py-3 rounded-xl font-bold text-xs shadow-md hover:bg-vedic-maroonDark transition-all flex items-center justify-center gap-2"
-              >
-                <ShoppingBag className="w-4 h-4 text-vedic-gold" /> Add to Cart
-              </button>
+              <AddToCartControl
+                product={product}
+                size="cta"
+                appearance="solid"
+                label="Add to Cart"
+                // Only a real choice (2+ sizes) makes a separate cart line — same as the product cards.
+                selectedSize={product.sizes && product.sizes.length > 1 ? selectedSize : undefined}
+                className="flex-1"
+                buttonClassName="py-3 gap-2"
+              />
 
               <button
                 onClick={() => toggleWishlist(product)}

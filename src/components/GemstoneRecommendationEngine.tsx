@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Sparkles, Calendar, Clock, MapPin, Target, User, ArrowRight, ShieldAlert, RotateCcw, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { Sparkles, Calendar, Clock, MapPin, Target, User, ArrowRight, ShieldAlert, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { AstrologyService } from '../services/astrologyService';
 import { AstrologyRecommendationInput, AstrologyRecommendationResult } from '../types/gemstone';
 import { GEMSTONE_PRODUCTS_LIST } from '../data/gemstoneData';
-import { useCart } from '../context/CartContext';
+import { AddToCartControl } from './AddToCartControl';
 
 export const GemstoneRecommendationEngine: React.FC = () => {
-  const { addToCart } = useCart();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<AstrologyRecommendationInput>({
     fullName: '',
@@ -315,12 +314,13 @@ export const GemstoneRecommendationEngine: React.FC = () => {
                     <div className="flex-1 space-y-1">
                       <h5 className="font-serif font-bold text-sm text-white line-clamp-1">{prod.title}</h5>
                       <p className="text-xs font-bold text-vedic-gold">INR ₹{prod.price.toLocaleString()}</p>
-                      <button
-                        onClick={() => addToCart(prod)}
-                        className="bg-gold-gradient text-vedic-dark text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:scale-105 transition-transform"
-                      >
-                        <ShoppingBag className="w-3 h-3" /> Add to Cart
-                      </button>
+                      <AddToCartControl
+                        product={prod}
+                        size="full"
+                        appearance="gold"
+                        label="Add to Cart"
+                        buttonClassName="text-[11px] px-3 py-1.5 rounded-lg gap-1.5"
+                      />
                     </div>
                   </div>
                 ))}

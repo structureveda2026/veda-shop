@@ -31,6 +31,7 @@ import {
 } from '../services/gemstoneCatalogService';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { AddToCartControl } from '../components/AddToCartControl';
 
 // Tab strip shown under the gemstone's guide header. Each entry jumps to a real section
 // already on this page where one exists ('#about', '#vedic-guidance', '#pricing'); the rest
@@ -296,32 +297,28 @@ export const SingleGemstonePage: React.FC = () => {
     navigate('/checkout');
   };
 
-  // Adds a specific listing straight to the cart from its "Shop By Variety" card, at the
-  // default carat weight, using that listing's own price (see getVarietyProducts()).
-  const handleAddVarietyProductToCart = (product: VarietyProductTile) => {
-    addToCart(
-      {
-        id: `${product.id}-${gem.availableWeights[0].carat}ct`,
-        title: `${product.title} (${gem.availableWeights[0].label})`,
-        subtitle: gem.hindiName || gem.category,
-        price: product.price,
-        originalPrice: product.compareAtPrice,
-        rating: product.rating,
-        reviewsCount: product.reviewCount,
-        images: [product.image, ...gem.gallery],
-        category: gem.category,
-        isBestSeller: !!gem.isPopular,
-        isNew: !!gem.isExclusive,
-        inStock: product.inStock,
-        sku: `GEM-${gem.id.toUpperCase()}-${product.handle.toUpperCase()}-${gem.availableWeights[0].carat}CT`,
-        description: gem.description,
-        benefits: gem.benefits,
-        tags: [gem.category, gem.gemstoneType, gem.origin]
-      } as any,
-      1
-    );
-    setIsCartOpen(true);
-  };
+  // The cart line for a specific listing on its "Shop By Variety" card, at the default carat
+  // weight, using that listing's own price (see getVarietyProducts()). Handed to the shared
+  // <AddToCartControl /> on both the list row and the grid card below.
+  const buildVarietyCartProduct = (product: VarietyProductTile) =>
+    ({
+      id: `${product.id}-${gem.availableWeights[0].carat}ct`,
+      title: `${product.title} (${gem.availableWeights[0].label})`,
+      subtitle: gem.hindiName || gem.category,
+      price: product.price,
+      originalPrice: product.compareAtPrice,
+      rating: product.rating,
+      reviewsCount: product.reviewCount,
+      images: [product.image, ...gem.gallery],
+      category: gem.category,
+      isBestSeller: !!gem.isPopular,
+      isNew: !!gem.isExclusive,
+      inStock: product.inStock,
+      sku: `GEM-${gem.id.toUpperCase()}-${product.handle.toUpperCase()}-${gem.availableWeights[0].carat}CT`,
+      description: gem.description,
+      benefits: gem.benefits,
+      tags: [gem.category, gem.gemstoneType, gem.origin]
+    }) as any;
 
   const handleToggleVarietyProductWishlist = (product: VarietyProductTile) => {
     toggleWishlist({
@@ -719,18 +716,14 @@ export const SingleGemstonePage: React.FC = () => {
                               )}
                             </div>
 
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddVarietyProductToCart(product);
-                              }}
+                            <AddToCartControl
+                              product={buildVarietyCartProduct(product)}
                               disabled={!product.inStock}
-                              className="flex-shrink-0 bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory p-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent flex items-center gap-1 text-[11px] font-bold disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-vedic-gold/10 disabled:hover:text-vedic-maroon"
-                              title={product.inStock ? 'Add to Cart' : 'Out of Stock'}
-                            >
-                              <ShoppingBag className="w-3.5 h-3.5" />
-                              <span>{product.inStock ? 'Add' : 'Sold Out'}</span>
-                            </button>
+                              size="full"
+                              disabledLabel="Sold Out"
+                              className="flex-shrink-0"
+                              buttonClassName="text-[11px]"
+                            />
                           </div>
                         </div>
                       </div>
@@ -840,18 +833,15 @@ export const SingleGemstonePage: React.FC = () => {
                             )}
                           </div>
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddVarietyProductToCart(product);
-                            }}
+                          <AddToCartControl
+                            product={buildVarietyCartProduct(product)}
                             disabled={!product.inStock}
-                            className="w-full bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory py-2 px-3 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent flex items-center justify-center gap-1.5 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-vedic-gold/10 disabled:hover:text-vedic-maroon"
-                            title={product.inStock ? 'Add to Cart' : 'Out of Stock'}
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>{product.inStock ? 'Add to Cart' : 'Sold Out'}</span>
-                          </button>
+                            size="full"
+                            label="Add to Cart"
+                            disabledLabel="Sold Out"
+                            className="w-full"
+                            buttonClassName="py-2 px-3 justify-center gap-1.5"
+                          />
                         </div>
                       </div>
                     </div>

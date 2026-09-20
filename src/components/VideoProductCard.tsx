@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, Volume2, VolumeX, ShoppingBag, Sparkles } from 'lucide-react';
+import { Play, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { Product } from '../types/ecommerce';
-import { useCart } from '../context/CartContext';
+import { AddToCartControl } from './AddToCartControl';
 
 interface VideoProductCardProps {
   product: Product;
@@ -12,7 +12,6 @@ interface VideoProductCardProps {
 export const VideoProductCard: React.FC<VideoProductCardProps> = ({ product }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
-  const { addToCart } = useCart();
 
   return (
     <div className="relative aspect-[9/16] rounded-3xl overflow-hidden bg-vedic-dark shadow-xl border-2 border-vedic-gold/30 group">
@@ -65,12 +64,14 @@ export const VideoProductCard: React.FC<VideoProductCardProps> = ({ product }) =
           </div>
         </Link>
 
-        <button
-          onClick={() => addToCart(product, 1)}
-          className="w-full mt-2.5 bg-vedic-maroon text-vedic-ivory py-2 rounded-xl text-xs font-bold shadow-md hover:bg-vedic-maroonDark transition-colors flex items-center justify-center gap-1.5"
-        >
-          <ShoppingBag className="w-3.5 h-3.5 text-vedic-gold" /> Shop Product Now
-        </button>
+        <AddToCartControl
+          product={product}
+          size="full"
+          appearance="solid"
+          label="Shop Product Now"
+          className="w-full mt-2.5"
+          buttonClassName="py-2 justify-center gap-1.5"
+        />
       </div>
     </div>
   );

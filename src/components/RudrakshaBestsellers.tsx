@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Heart, ShoppingBag, Star } from 'lucide-react';
+import { ArrowRight, Heart, Star } from 'lucide-react';
 import { MOCK_PRODUCTS } from '../data/products';
 import type { Product } from '../types/ecommerce';
-import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { AddToCartControl } from './AddToCartControl';
 
 const BESTSELLER_LIMIT = 8;
 
@@ -61,7 +61,6 @@ function getTopRudrakshaBestsellers(limit: number): Product[] {
  *    (`group-hover:scale-105`) hover effect is kept identical to ShopByMukhi.
  */
 const BestsellerCard: React.FC<{ product: Product }> = ({ product }) => {
-  const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
   const isLiked = isInWishlist(product.id);
@@ -71,13 +70,6 @@ const BestsellerCard: React.FC<{ product: Product }> = ({ product }) => {
     e.preventDefault();
     e.stopPropagation();
     toggleWishlist(product);
-  };
-
-  const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!inStock) return;
-    addToCart(product, 1);
   };
 
   return (
@@ -165,15 +157,12 @@ const BestsellerCard: React.FC<{ product: Product }> = ({ product }) => {
             )}
           </div>
 
-          <button
-            onClick={handleAddToCart}
+          <AddToCartControl
+            product={product}
             disabled={!inStock}
-            title="Add to Cart"
-            className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-1.5 bg-vedic-gold/10 hover:bg-vedic-maroon text-vedic-maroon hover:text-vedic-ivory px-3.5 py-2 rounded-xl transition-all duration-200 border border-vedic-gold/30 hover:border-transparent text-xs sm:text-sm font-bold shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-vedic-gold/10 disabled:hover:text-vedic-maroon"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            Add
-          </button>
+            size="full"
+            className="w-full sm:w-auto justify-center sm:justify-start"
+          />
         </div>
       </div>
     </div>
