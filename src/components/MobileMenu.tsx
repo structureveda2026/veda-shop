@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { X, ChevronRight, ChevronDown, Phone, ShieldCheck, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface MobileMenuProps {
 
 export const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
   const [openSection, setOpenSection] = useState<string | null>('rudraksha');
+  const { isAuthenticated, user, openAuthModal } = useAuth();
 
   if (!isOpen) return null;
 
@@ -173,9 +175,21 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
         {/* Bottom Utility Footer */}
         <div className="p-4 border-t border-vedic-gold/30 bg-vedic-brown text-vedic-ivory space-y-3">
           <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
-            <Link to="/account" onClick={onClose} className="flex items-center gap-2 p-2 rounded bg-white/10">
-              <User className="w-4 h-4 text-vedic-gold" /> Account
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/account" onClick={onClose} className="flex items-center gap-2 p-2 rounded bg-white/10">
+                <User className="w-4 h-4 text-vedic-gold" /> {(user?.fullName || 'Account').split(' ')[0]}
+              </Link>
+            ) : (
+              <button
+                onClick={() => {
+                  onClose();
+                  openAuthModal();
+                }}
+                className="flex items-center gap-2 p-2 rounded bg-white/10"
+              >
+                <User className="w-4 h-4 text-vedic-gold" /> Login / Register
+              </button>
+            )}
             <Link to="/track-order" onClick={onClose} className="flex items-center gap-2 p-2 rounded bg-white/10">
               <ShieldCheck className="w-4 h-4 text-vedic-gold" /> Track Order
             </Link>

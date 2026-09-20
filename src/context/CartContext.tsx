@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Product, CartItem, ProductVariant } from '../types/ecommerce';
+import { useAuth } from './AuthContext';
 import {
   ShopifyCartSnapshot,
   ShopifyError,
@@ -61,6 +62,7 @@ const readStoredShopifyCartId = (): string | null => {
 };
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, openAuthModal } = useAuth();
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('vedic_cart');
@@ -260,6 +262,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addToCart = (product: Product, quantity = 1, selectedVariant?: ProductVariant, selectedSize?: string) => {
+    // Cart is a signed-in feature — anyone not logged in gets the login/register popup instead.
+    if (!isAuthenticated) {
+      openAuthModal('Please sign in or create an account to add items to your cart.');
+      return;
+    }
     setCart((prev) => {
       const existingIndex = prev.findIndex(
         (item) => item.product.id === product.id && item.selectedSize === selectedSize

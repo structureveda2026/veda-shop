@@ -6,6 +6,7 @@ import { MegaMenu } from './MegaMenu';
 import { MobileMenu } from './MobileMenu';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
 import { MOCK_PRODUCTS } from '../data/products';
 import { Product } from '../types/ecommerce';
 
@@ -17,6 +18,7 @@ export const Header: React.FC = () => {
   
   const { totalItems, setIsCartOpen } = useCart();
   const { wishlistCount } = useWishlist();
+  const { isAuthenticated, user, openAuthModal } = useAuth();
   const navigate = useNavigate();
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -161,14 +163,29 @@ export const Header: React.FC = () => {
 
           {/* User Utility Actions */}
           <div className="flex items-center space-x-3 md:space-x-5">
-            <Link
-              to="/account"
-              className="hidden sm:flex flex-col items-center text-vedic-dark hover:text-vedic-maroon transition-colors"
-              title="My Account"
-            >
-              <User className="w-5 h-5" />
-              <span className="text-[10px] font-medium mt-0.5">Account</span>
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                to="/account"
+                className="hidden sm:flex flex-col items-center text-vedic-dark hover:text-vedic-maroon transition-colors"
+                title="My Account"
+              >
+                <span className="w-5 h-5 rounded-full bg-vedic-maroon text-vedic-gold flex items-center justify-center text-[9px] font-bold border border-vedic-gold/40">
+                  {(user?.fullName || 'U').trim().charAt(0).toUpperCase()}
+                </span>
+                <span className="text-[10px] font-medium mt-0.5">
+                  {(user?.fullName || 'Account').split(' ')[0]}
+                </span>
+              </Link>
+            ) : (
+              <button
+                onClick={() => openAuthModal()}
+                className="hidden sm:flex flex-col items-center text-vedic-dark hover:text-vedic-maroon transition-colors"
+                title="Login / Register"
+              >
+                <User className="w-5 h-5" />
+                <span className="text-[10px] font-medium mt-0.5">Login</span>
+              </button>
+            )}
 
             <Link
               to="/wishlist"

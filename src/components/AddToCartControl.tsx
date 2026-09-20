@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, Lock, Trash2 } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { Product } from '../types/ecommerce';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 export interface AddToCartControlProps {
   product: Product;
@@ -90,6 +91,7 @@ export const AddToCartControl: React.FC<AddToCartControlProps> = ({
   buttonClassName,
 }) => {
   const { addToCart, updateQuantity, removeFromCart, getCartLine } = useCart();
+  const { isAuthenticated, openAuthModal } = useAuth();
   const [isSelecting, setIsSelecting] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
@@ -108,6 +110,11 @@ export const AddToCartControl: React.FC<AddToCartControlProps> = ({
 
   const openSelector = (e: React.MouseEvent) => {
     swallow(e);
+    // Not signed in — show the login/register popup instead of the quantity picker.
+    if (!isAuthenticated) {
+      openAuthModal('Please sign in or create an account to add items to your cart.');
+      return;
+    }
     if (beforeAdd && !beforeAdd()) return;
     setQuantity(1);
     setIsSelecting(true);
@@ -240,16 +247,21 @@ export const AddToCartControl: React.FC<AddToCartControlProps> = ({
     <button
       onClick={openSelector}
       disabled={disabled}
-      title={disabled ? 'Out of Stock' : 'Add to Cart'}
+      title={disabled ? 'Out of Stock' : !isAuthenticated ? 'Sign in to Add to Cart' : 'Add to Cart'}
       className={twMerge(
         'flex items-center gap-1 p-2 rounded-xl text-xs font-bold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed',
         size === 'cta' && 'justify-center',
+        !isAuthenticated && !disabled && 'opacity-70',
         theme.idle,
         buttonClassName,
         className
       )}
     >
-      <ShoppingBag className="w-4 h-4 shrink-0" />
+      {!isAuthenticated && !disabled ? (
+        <Lock className="w-3.5 h-3.5 shrink-0" />
+      ) : (
+        <ShoppingBag className="w-4 h-4 shrink-0" />
+      )}
       <span className={size === 'compact' ? 'hidden sm:inline' : undefined}>{idleText}</span>
     </button>
   );

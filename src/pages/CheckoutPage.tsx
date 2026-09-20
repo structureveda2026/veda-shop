@@ -1,25 +1,104 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth, getDefaultAddress } from '../context/AuthContext';
 import { Breadcrumb } from '../components/Breadcrumb';
-import { ShieldCheck, Lock, CheckCircle2, CreditCard, Smartphone, Banknote, ArrowRight } from 'lucide-react';
+import {
+  ShieldCheck,
+  Lock,
+  CreditCard,
+  Smartphone,
+  Banknote,
+  ArrowRight,
+  MapPin,
+  Plus,
+  User,
+} from 'lucide-react';
+
+const emptyAddressFields = {
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  state: '',
+  pincode: '',
+};
 
 export const CheckoutPage: React.FC = () => {
   const { cart, grandTotal, subtotal, discountAmount, shippingFee, clearCart } = useCart();
+  const { isAuthenticated, user, placeOrder, addAddress, openAuthModal } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [formData, setFormData] = useState({
-    fullName: 'Yash Sharma',
-    email: 'yash@example.com',
-    phone: '9876543210',
-    addressLine1: 'Flat 402, Lotus Towers',
-    addressLine2: 'MG Road, Connaught Place',
-    city: 'New Delhi',
-    state: 'Delhi',
-    pincode: '110001',
+  const defaultAddress = getDefaultAddress(user);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | 'new' | null>(
+    defaultAddress ? defaultAddress.id : user && user.addresses.length ? user.addresses[0].id : 'new'
+  );
+
+  const [formData, setFormData] = useState(() => ({
+    fullName: user?.fullName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    ...(defaultAddress
+      ? {
+          addressLine1: defaultAddress.addressLine1,
+          addressLine2: defaultAddress.addressLine2 || '',
+          city: defaultAddress.city,
+          state: defaultAddress.state,
+          pincode: defaultAddress.pincode,
+        }
+      : emptyAddressFields),
     paymentMethod: 'upi',
-  });
+  }));
+  const [saveNewAddress, setSaveNewAddress] = useState(true);
+
+  // Every unauthenticated visit to /checkout (e.g. straight from a "Buy Now" click)
+  // gets the login/register popup instead of a hardcoded form.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      openAuthModal('Please sign in or create an account to complete your order.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  // Keep the form in sync with the user's saved profile/address once signed in.
+  useEffect(() => {
+    if (!user) return;
+    const addr = user.addresses.find((a) => a.id === selectedAddressId);
+    setFormData((prev) => ({
+      ...prev,
+      fullName: prev.fullName || user.fullName,
+      email: prev.email || user.email,
+      phone: prev.phone || user.phone,
+      ...(addr
+        ? {
+            addressLine1: addr.addressLine1,
+            addressLine2: addr.addressLine2 || '',
+            city: addr.city,
+            state: addr.state,
+            pincode: addr.pincode,
+          }
+        : {}),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, selectedAddressId]);
+
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+        <div className="w-16 h-16 rounded-full bg-vedic-maroon text-vedic-gold flex items-center justify-center mx-auto">
+          <User className="w-8 h-8" />
+        </div>
+        <h2 className="font-serif font-bold text-xl text-vedic-maroon">Sign In to Complete Your Order</h2>
+        <p className="text-xs text-vedic-muted">Please sign in or create an account to proceed to checkout.</p>
+        <button
+          onClick={() => openAuthModal('Please sign in or create an account to complete your order.')}
+          className="bg-vedic-maroon text-white px-6 py-2.5 rounded-full text-xs font-bold shadow-md hover:bg-vedic-maroonDark transition-colors"
+        >
+          Sign In / Register
+        </button>
+      </div>
+    );
+  }
 
   if (cart.length === 0) {
     return (
@@ -39,11 +118,55 @@ export const CheckoutPage: React.FC = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const selectSavedAddress = (id: string) => {
+    setSelectedAddressId(id);
+  };
+
+  const selectNewAddress = () => {
+    setSelectedAddressId('new');
+    setFormData((prev) => ({ ...prev, ...emptyAddressFields }));
+  };
+
+  const handleAddressSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedAddressId === 'new' && saveNewAddress) {
+      await addAddress({
+        fullName: formData.fullName,
+        phone: formData.phone,
+        addressLine1: formData.addressLine1,
+        addressLine2: formData.addressLine2,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+        country: 'India',
+        isDefault: user.addresses.length === 0,
+      });
+    }
+    setStep(2);
+  };
+
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
-    const orderId = `VA-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+    const order = placeOrder({
+      items: cart,
+      subtotal,
+      discountAmount,
+      shippingFee,
+      total: grandTotal,
+      shippingAddress: {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        addressLine1: formData.addressLine1,
+        addressLine2: formData.addressLine2,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+      },
+      paymentMethod: formData.paymentMethod,
+    });
     clearCart();
-    navigate('/order-success', { state: { orderId, formData, grandTotal } });
+    navigate('/order-success', { state: { orderId: order.id, formData, grandTotal } });
   };
 
   return (
@@ -67,10 +190,57 @@ export const CheckoutPage: React.FC = () => {
         {/* Left Form Column */}
         <div className="lg:col-span-2 bg-white rounded-3xl p-6 md:p-8 border border-vedic-gold/20 shadow-card space-y-6">
           {step === 1 ? (
-            <div className="space-y-6">
+            <form onSubmit={handleAddressSubmit} className="space-y-6">
               <h3 className="font-serif font-bold text-lg text-vedic-maroon border-b border-vedic-beige pb-3">
                 Shipping Address Details
               </h3>
+
+              {/* Saved addresses picker — pulled from the signed-in account, not hardcoded */}
+              {user.addresses.length > 0 && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-vedic-dark">Choose a saved address</label>
+                  {user.addresses.map((addr) => (
+                    <label
+                      key={addr.id}
+                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all text-xs ${
+                        selectedAddressId === addr.id ? 'border-vedic-gold bg-vedic-ivory' : 'border-vedic-gold/30 bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="savedAddress"
+                        checked={selectedAddressId === addr.id}
+                        onChange={() => selectSavedAddress(addr.id)}
+                        className="mt-0.5 accent-vedic-maroon"
+                      />
+                      <div>
+                        <span className="font-bold text-vedic-dark flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-vedic-gold" /> {addr.fullName}
+                          {addr.isDefault && <span className="text-[10px] text-vedic-goldDark font-bold">(Default)</span>}
+                        </span>
+                        <span className="text-vedic-muted block mt-0.5">
+                          {addr.addressLine1}
+                          {addr.addressLine2 ? `, ${addr.addressLine2}` : ''}, {addr.city}, {addr.state} - {addr.pincode}
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all text-xs font-bold ${
+                      selectedAddressId === 'new' ? 'border-vedic-gold bg-vedic-ivory text-vedic-maroon' : 'border-vedic-gold/30 bg-white text-vedic-dark'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="savedAddress"
+                      checked={selectedAddressId === 'new'}
+                      onChange={selectNewAddress}
+                      className="accent-vedic-maroon"
+                    />
+                    <Plus className="w-3.5 h-3.5 text-vedic-gold" /> Deliver to a new address
+                  </label>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div>
@@ -117,6 +287,16 @@ export const CheckoutPage: React.FC = () => {
                     className="w-full px-3 py-2 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none"
                   />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block font-bold text-vedic-dark mb-1">Landmark / Area (optional)</label>
+                  <input
+                    type="text"
+                    name="addressLine2"
+                    value={formData.addressLine2}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none"
+                  />
+                </div>
                 <div>
                   <label className="block font-bold text-vedic-dark mb-1">City *</label>
                   <input
@@ -124,6 +304,17 @@ export const CheckoutPage: React.FC = () => {
                     name="city"
                     required
                     value={formData.city}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-vedic-dark mb-1">State *</label>
+                  <input
+                    type="text"
+                    name="state"
+                    required
+                    value={formData.state}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none"
                   />
@@ -141,13 +332,25 @@ export const CheckoutPage: React.FC = () => {
                 </div>
               </div>
 
+              {selectedAddressId === 'new' && (
+                <label className="flex items-center gap-2 text-xs text-vedic-muted">
+                  <input
+                    type="checkbox"
+                    checked={saveNewAddress}
+                    onChange={(e) => setSaveNewAddress(e.target.checked)}
+                    className="accent-vedic-maroon"
+                  />
+                  Save this address to my account for next time
+                </label>
+              )}
+
               <button
-                onClick={() => setStep(2)}
+                type="submit"
                 className="w-full bg-vedic-maroon text-white py-3.5 rounded-full text-xs font-bold shadow-md hover:bg-vedic-maroonDark transition-colors flex items-center justify-center gap-2"
               >
                 Proceed to Select Payment Method <ArrowRight className="w-4 h-4" />
               </button>
-            </div>
+            </form>
           ) : (
             <form onSubmit={handlePlaceOrder} className="space-y-6">
               <h3 className="font-serif font-bold text-lg text-vedic-maroon border-b border-vedic-beige pb-3">
@@ -275,6 +478,10 @@ export const CheckoutPage: React.FC = () => {
               <span>Grand Total</span>
               <span>₹{grandTotal.toLocaleString('en-IN')}</span>
             </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[10px] text-vedic-muted pt-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Secure checkout • Encrypted payment
           </div>
         </div>
       </div>

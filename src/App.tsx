@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
@@ -11,6 +12,7 @@ import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
 import { CartAddedToast } from './components/CartAddedToast';
 import { StickyBottomNav } from './components/StickyBottomNav';
+import { AuthModal } from './components/AuthModal';
 
 import { HomePage } from './pages/HomePage';
 import { RudrakshaPage } from './pages/RudrakshaPage';
@@ -68,6 +70,7 @@ const ReturnPathTracker = () => {
 export const App: React.FC = () => {
   return (
     <Router>
+      <AuthProvider>
       <UnitProvider>
         <CartProvider>
           <WishlistProvider>
@@ -146,11 +149,13 @@ export const App: React.FC = () => {
                 <CartDrawer />
                 <CartAddedToast />
                 <StickyBottomNav />
+                <AuthModal />
               </div>
             </RecentlyViewedProvider>
           </WishlistProvider>
         </CartProvider>
       </UnitProvider>
+      </AuthProvider>
     </Router>
   );
 };
