@@ -155,11 +155,11 @@ export const CartDrawer: React.FC = () => {
               <button
                 onClick={() => {
                   setIsCartOpen(false);
-                  navigate('/shop');
+                  navigate('/');
                 }}
                 className="bg-vedic-maroon text-vedic-ivory px-6 py-2.5 rounded-full text-xs font-bold shadow-md hover:bg-vedic-maroonDark transition-colors"
               >
-                Explore Spiritual Shop
+                Back to Home
               </button>
             </div>
           ) : (

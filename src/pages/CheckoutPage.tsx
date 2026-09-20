@@ -26,10 +26,10 @@ export const CheckoutPage: React.FC = () => {
       <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
         <h2 className="font-serif font-bold text-xl text-vedic-maroon">Your Cart is Empty</h2>
         <button
-          onClick={() => navigate('/shop')}
+          onClick={() => navigate('/')}
           className="bg-vedic-maroon text-white px-6 py-2 rounded-full text-xs font-bold"
         >
-          Return to Shop
+          Back to Home
         </button>
       </div>
     );

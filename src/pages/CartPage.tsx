@@ -46,10 +46,10 @@ export const CartPage: React.FC = () => {
           Explore our certified Rudraksha beads, crystal energy bracelets, and Vastu decor.
         </p>
         <Link
-          to="/shop"
+          to="/"
           className="inline-block bg-vedic-maroon text-vedic-ivory px-8 py-3 rounded-full text-xs font-bold shadow-lg hover:bg-vedic-maroonDark transition-colors"
         >
-          Explore All Products
+          Back to Home
         </Link>
       </div>
     );

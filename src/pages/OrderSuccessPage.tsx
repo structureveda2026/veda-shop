@@ -1,12 +1,34 @@
-import React from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { CheckCircle2, Sparkles, Package, ArrowRight, Printer } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { CheckCircle2, Sparkles, Package, ArrowLeft } from 'lucide-react';
+import { describeReturnPath, getReturnPath } from '../lib/returnPath';
+
+// How long the confirmation stays up before the visitor is taken back to the page they ordered from
+const REDIRECT_SECONDS = 10;
 
 export const OrderSuccessPage: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location.state || {};
-  const orderId = state.orderId || `VA-ORD-${Math.floor(100000 + Math.random() * 900000)}`;
+  const [fallbackOrderId] = useState(() => `VA-ORD-${Math.floor(100000 + Math.random() * 900000)}`);
+  const orderId = state.orderId || fallbackOrderId;
   const grandTotal = state.grandTotal || 1299;
+
+  // The page they were on before the cart / checkout (Home, Rudraksha, Bracelets…), fixed when this page opens.
+  const [returnPath] = useState(getReturnPath);
+  const returnLabel = describeReturnPath(returnPath);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(REDIRECT_SECONDS); // null = redirect cancelled
+
+  useEffect(() => {
+    if (secondsLeft === null) return;
+    if (secondsLeft <= 0) {
+      // replace, so the browser's Back button doesn't land here again and start another countdown
+      navigate(returnPath, { replace: true });
+      return;
+    }
+    const t = setTimeout(() => setSecondsLeft((s) => (s === null ? null : s - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [secondsLeft, navigate, returnPath]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12 text-center space-y-6">
@@ -56,12 +78,22 @@ export const OrderSuccessPage: React.FC = () => {
           <Package className="w-4 h-4 text-vedic-gold" /> Track Live Order Status
         </Link>
         <Link
-          to="/"
-          className="bg-white text-vedic-dark border border-vedic-gold/40 px-6 py-3 rounded-full text-xs font-bold hover:bg-vedic-ivory transition-colors"
+          to={returnPath}
+          replace
+          className="bg-white text-vedic-dark border border-vedic-gold/40 px-6 py-3 rounded-full text-xs font-bold hover:bg-vedic-ivory transition-colors flex items-center gap-2"
         >
-          Continue Spiritual Shopping
+          <ArrowLeft className="w-4 h-4 text-vedic-gold" /> Back to {returnLabel}
         </Link>
       </div>
+
+      {secondsLeft !== null && (
+        <p className="text-xs text-vedic-muted" aria-live="polite">
+          Taking you back to <span className="font-bold text-vedic-dark">{returnLabel}</span> in {secondsLeft}s ·{' '}
+          <button onClick={() => setSecondsLeft(null)} className="font-bold text-vedic-maroon hover:underline">
+            Stay here
+          </button>
+        </p>
+      )}
     </div>
   );
 };

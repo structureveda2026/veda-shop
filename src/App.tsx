@@ -4,6 +4,7 @@ import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
 import { UnitProvider } from './context/UnitContext';
+import { rememberReturnPath } from './lib/returnPath';
 
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -55,6 +56,15 @@ const ScrollToTop = () => {
   return null;
 };
 
+// Remember the last normal page (Home, Rudraksha, Bracelets…) so a completed order can send the visitor back to it
+const ReturnPathTracker = () => {
+  const { pathname, search } = useLocation();
+  useEffect(() => {
+    rememberReturnPath(pathname + search);
+  }, [pathname, search]);
+  return null;
+};
+
 export const App: React.FC = () => {
   return (
     <Router>
@@ -63,6 +73,7 @@ export const App: React.FC = () => {
           <WishlistProvider>
             <RecentlyViewedProvider>
               <ScrollToTop />
+              <ReturnPathTracker />
               <div className="min-h-screen flex flex-col bg-vedic-ivory text-vedic-dark font-sans selection:bg-vedic-gold selection:text-vedic-dark">
                 <Header />
 

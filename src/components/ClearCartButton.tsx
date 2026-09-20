@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 /**
  * "Clear cart" — used by the cart drawer and the cart page. Two taps on purpose: the first turns the
  * button into an inline "Remove all N items?" question (it goes back on its own after a few seconds),
- * the second empties the cart. clearCart() lives in CartContext, which mirrors the now-empty cart to
+ * the second empties the cart and takes the visitor to Home. clearCart() lives in CartContext, which mirrors the now-empty cart to
  * the Shopify cart (every line is removed there too) whenever Shopify is enabled.
  */
 export const ClearCartButton: React.FC<{ className?: string }> = ({ className = '' }) => {
-  const { clearCart, totalItems } = useCart();
+  const { clearCart, setIsCartOpen, totalItems } = useCart();
+  const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
@@ -50,8 +52,10 @@ export const ClearCartButton: React.FC<{ className?: string }> = ({ className = 
       <button
         type="button"
         onClick={() => {
-          clearCart();
           setConfirming(false);
+          clearCart();
+          setIsCartOpen(false);
+          navigate('/'); // an emptied cart sends the visitor Home
         }}
         className="text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-full transition-colors whitespace-nowrap"
       >
