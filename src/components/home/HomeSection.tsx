@@ -63,13 +63,46 @@ export const ComingSoonBox: React.FC = () => (
   </div>
 );
 
-/** A whole band in its "coming soon" state: heading, then the note. */
-export const ComingSoonSection: React.FC<{ id?: string; tone?: SectionTone; content: SectionContent }> = ({ id, tone = 'ivory', content }) => (
-  <HomeSection id={id} tone={tone} className="[&>div]:py-12 md:[&>div]:py-14">
-    <SectionHeader eyebrow={content.eyebrow} title={content.title} className="mb-8" />
-    <ComingSoonBox />
-  </HomeSection>
-);
+/**
+ * A whole band in its "coming soon" state.
+ * Once `content.image` is set (see COMING_SOON_BANNERS in homeService.ts), the eyebrow + title
+ * stay, and a full-bleed banner (edge-to-edge, breaking out of the page container) replaces the
+ * "Coming Soon" note below them. The banner's top/bottom edges fade into the section background
+ * instead of cutting off hard, so it blends with the page. Until an image is added, it falls back
+ * to the plain heading + "Coming Soon" note so nothing looks broken.
+ */
+export const ComingSoonSection: React.FC<{ id?: string; tone?: SectionTone; content: SectionContent }> = ({ id, tone = 'ivory', content }) => {
+  if (content.image) {
+    const fade =
+      'linear-gradient(to bottom, transparent 0, black 32px, black calc(100% - 32px), transparent 100%)';
+    return (
+      <HomeSection id={id} tone={tone} className="[&>div]:py-10 md:[&>div]:py-14">
+        <SectionHeader eyebrow={content.eyebrow} title={content.title} className="mb-8" />
+        {/* left-1/2 + -mx-[50vw] + w-screen breaks the image out of the max-w-7xl container so it
+            spans the full viewport width, regardless of how narrow or wide the page container is. */}
+        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+          <img
+            src={content.image}
+            alt={content.title}
+            width={1920}
+            height={640}
+            loading="lazy"
+            decoding="async"
+            className="block w-full h-auto md:h-[420px] md:object-cover"
+            style={{ WebkitMaskImage: fade, maskImage: fade }}
+          />
+        </div>
+      </HomeSection>
+    );
+  }
+
+  return (
+    <HomeSection id={id} tone={tone} className="[&>div]:py-12 md:[&>div]:py-14">
+      <SectionHeader eyebrow={content.eyebrow} title={content.title} className="mb-8" />
+      <ComingSoonBox />
+    </HomeSection>
+  );
+};
 
 /** Prev / next buttons for a horizontally scrolling row. */
 export const ScrollControls: React.FC<{ targetRef: React.RefObject<HTMLElement>; className?: string }> = ({ targetRef, className = '' }) => {

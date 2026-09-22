@@ -252,6 +252,18 @@ const DEMO_IMAGES = {
   hero: '/images/home/hero-banner.jpg',
 };
 
+/**
+ * "Coming soon" banner images for the three bands below (Gemstones, Puja & Spiritual Services,
+ * Kashi). Drop the file into `public/images/home/coming-soon/` and paste its path here — the band
+ * then shows this image full-width instead of the plain "Coming Soon" text. Leave a value as
+ * `undefined` to keep the current text-only look for that band.
+ */
+const COMING_SOON_BANNERS: Record<'gemstones' | 'services' | 'kashi', string | undefined> = {
+  gemstones: '/images/home/coming-soon/Gemstone.png',
+  services: '/images/home/coming-soon/Puja & Spiritual.png',
+  kashi: '/images/home/coming-soon/Kashi.png',
+};
+
 const interleave = <T,>(a: T[], b: T[]): T[] => {
   const out: T[] = [];
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
@@ -353,6 +365,7 @@ const DEFAULT_SECTIONS: Record<SectionKey, SectionContent> = {
     title: 'Discover Your Gemstone',
     description:
       'Explore Vedic gemstones and natural stones with detailed product information and expert guidance.',
+    image: COMING_SOON_BANNERS.gemstones,
     status: 'coming_soon',
     ctaLabel: 'Explore Gemstones',
     ctaHref: '/gemstones',
@@ -385,6 +398,7 @@ const DEFAULT_SECTIONS: Record<SectionKey, SectionContent> = {
     eyebrow: 'Puja & Spiritual Services',
     title: 'More Than a Store',
     description: 'Traditional Vedic services performed from Kashi, booked online.',
+    image: COMING_SOON_BANNERS.services,
     status: 'coming_soon',
     ctaLabel: 'Explore Vedic Services',
     ctaHref: '/collections/sawan-special-puja',
@@ -395,6 +409,7 @@ const DEFAULT_SECTIONS: Record<SectionKey, SectionContent> = {
     title: 'From Kashi, With Devotion',
     description:
       'Connect with traditional Vedic practices through our services and spiritual offerings from Kashi.',
+    image: COMING_SOON_BANNERS.kashi,
     status: 'coming_soon',
     ctaLabel: 'Explore Kashi Services',
     ctaHref: '/collections/sawan-special-puja',

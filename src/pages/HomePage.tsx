@@ -99,8 +99,8 @@ export const HomePage: React.FC = () => {
       <HomeProductGrid content={s.bestsellers} products={content.products} loading={loading} />
 
       <HomeEditorial id="discover-rudraksha" content={s.rudraksha} tone="ivory" />
-      <HomeEditorial id="discover-gemstones" content={s.gemstones} tone="sand" imageRight />
       <HomeEditorial id="shop-bracelets" content={s.bracelets} tone="white" />
+      <HomeEditorial id="discover-gemstones" content={s.gemstones} tone="sand" imageRight />
 
       <HomeRashiGrid content={s.rashi} rashi={content.rashi} />
       <HomePurposeGrid content={s.purpose} purposes={content.purposes} />
