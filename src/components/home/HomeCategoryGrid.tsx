@@ -46,13 +46,49 @@ const LiveCard: React.FC<{ category: HomeCategory }> = ({ category }) => {
   );
 };
 
-/** Not live yet: name + "Coming Soon", nothing else, and not clickable. */
-const SoonCard: React.FC<{ category: HomeCategory }> = ({ category }) => (
-  <div className="h-full min-h-[120px] md:min-h-[160px] flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-vedic-gold/50 bg-white/60 p-4 text-center">
-    <h3 className="font-serif font-semibold text-xl md:text-2xl text-vedic-charcoal/70">{category.title}</h3>
-    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-vedic-goldDeep">Coming Soon</span>
-  </div>
-);
+/**
+ * Not live yet. Same image-on-top card as LiveCard once an image is added (see CATEGORY_IMAGES in
+ * homeService.ts) — just not clickable, and "Coming Soon" instead of "Explore →". Until an image
+ * is added it falls back to the plain dashed placeholder (name + "Coming Soon", nothing else).
+ */
+const SoonCard: React.FC<{ category: HomeCategory }> = ({ category }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (!category.image || imageFailed) {
+    return (
+      <div className="h-full min-h-[120px] md:min-h-[160px] flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-vedic-gold/50 bg-white/60 p-4 text-center">
+        <h3 className="font-serif font-semibold text-xl md:text-2xl text-vedic-charcoal/70">{category.title}</h3>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-vedic-goldDeep">Coming Soon</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex flex-col h-full bg-white rounded-2xl overflow-hidden border border-black/5 ${CARD_SHADOW}`}>
+      <div className="relative aspect-[4/3] overflow-hidden bg-vedic-sand">
+        <img
+          src={category.image}
+          alt={category.title}
+          width={640}
+          height={480}
+          loading="lazy"
+          decoding="async"
+          onError={() => setImageFailed(true)}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      </div>
+      <div className="p-4 md:p-6 flex flex-col flex-1">
+        <h3 className="font-serif font-semibold text-xl md:text-2xl text-vedic-dark">{category.title}</h3>
+        {category.description && (
+          <p className="mt-1.5 text-[13px] md:text-sm text-vedic-muted leading-relaxed line-clamp-2">{category.description}</p>
+        )}
+        <span className="mt-auto pt-4 inline-flex items-center gap-1.5 text-sm font-medium text-vedic-goldDeep">
+          Coming Soon
+        </span>
+      </div>
+    </div>
+  );
+};
 
 /** "Explore Veda Store" — one card per category from Shopify; a new category is a new entry, not new code. */
 export const HomeCategoryGrid: React.FC<{ content: SectionContent; categories: HomeCategory[] }> = ({ content, categories }) => {

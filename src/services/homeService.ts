@@ -260,7 +260,7 @@ const DEMO_IMAGES = {
  */
 const COMING_SOON_BANNERS: Record<'gemstones' | 'services' | 'kashi', string | undefined> = {
   gemstones: '/images/home/coming-soon/Gemstone.png',
-  services: '/images/home/coming-soon/Puja & Spiritual.png',
+  services: '/images/home/coming-soon/Puja & Spiritual.png', 
   kashi: '/images/home/coming-soon/Kashi.png',
 };
 
@@ -457,13 +457,26 @@ const DEFAULT_TRUST: TrustItem[] = [
   { id: 'loved', title: 'Loved by Customers', subtitle: 'Trusted by thousands', icon: 'star' },
 ];
 
+/**
+ * "Coming soon" thumbnail images for the category tiles below (Gemstones, Yantra, Puja Samagri,
+ * Puja & Yagya). Drop the file into `public/images/home/categories/` and paste its path here — the
+ * tile then shows this image (with a blurred caption at the bottom) instead of the plain "Coming
+ * Soon" placeholder. Leave a value as `undefined` to keep the placeholder for that category.
+ */
+const CATEGORY_IMAGES: Record<'gemstones' | 'yantra' | 'puja-samagri' | 'puja-yagya', string | undefined> = {
+  gemstones: '/images/home/categories/Gemstone.png',
+  yantra: '/images/home/categories/Yantra.png',
+  'puja-samagri': undefined,
+  'puja-yagya': undefined,
+};
+
 const DEFAULT_CATEGORIES: HomeCategory[] = [
   { id: 'rudraksha', key: 'rudraksha', title: 'Rudraksha', description: 'Authentic Rudraksha & sacred beads', image: DEMO_IMAGES.rudraksha, href: '/rudraksha', status: 'live' },
-  { id: 'gemstones', key: 'gemstones', title: 'Gemstones', description: 'Vedic & natural gemstone collection', href: '/gemstones', status: 'coming_soon' },
+  { id: 'gemstones', key: 'gemstones', title: 'Gemstones', description: 'Vedic & natural gemstone collection', image: CATEGORY_IMAGES.gemstones, href: '/gemstones', status: 'coming_soon' },
   { id: 'bracelets', key: 'bracelets', title: 'Bracelets', description: 'Rudraksha, gemstone & crystal bracelets', image: DEMO_IMAGES.bracelets, href: '/collections/bracelets', status: 'live' },
-  { id: 'yantra', key: 'yantra', title: 'Yantra', description: 'Traditional sacred Yantras', href: '/collections/yantra', status: 'coming_soon' },
-  { id: 'puja-samagri', key: 'puja-samagri', title: 'Puja Samagri', description: 'Essential products for your rituals', href: '/collections/puja-samagri', status: 'coming_soon' },
-  { id: 'puja-yagya', key: 'puja-yagya', title: 'Puja & Yagya', description: 'Online Vedic services', href: '/collections/sawan-special-puja', status: 'coming_soon' },
+  { id: 'yantra', key: 'yantra', title: 'Yantra', description: 'Traditional sacred Yantras', image: CATEGORY_IMAGES.yantra, href: '/collections/yantra', status: 'coming_soon' },
+  { id: 'puja-samagri', key: 'puja-samagri', title: 'Puja Samagri', description: 'Essential products for your rituals', image: CATEGORY_IMAGES['puja-samagri'], href: '/collections/puja-samagri', status: 'coming_soon' },
+  { id: 'puja-yagya', key: 'puja-yagya', title: 'Puja & Yagya', description: 'Online Vedic services', image: CATEGORY_IMAGES['puja-yagya'], href: '/collections/sawan-special-puja', status: 'coming_soon' },
 ];
 
 const DEFAULT_FINDER: FinderOption[] = [
