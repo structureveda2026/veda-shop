@@ -433,8 +433,13 @@ const DEFAULT_SECTIONS: Record<SectionKey, SectionContent> = {
 const DEFAULT_TRUST: TrustItem[] = [
   { id: 'authenticity', title: 'Authenticity', subtitle: 'Clear product information', icon: 'shield-check' },
   { id: 'quality', title: 'Quality Selection', subtitle: 'Chosen with care', icon: 'gem' },
+  { id: 'certified', title: 'Certified & Lab Tested', subtitle: 'Verified authenticity', icon: 'award' },
   { id: 'packaging', title: 'Secure Packaging', subtitle: 'Safe delivery', icon: 'package' },
+  { id: 'shipping', title: 'Free & Fast Shipping', subtitle: 'Pan-India delivery', icon: 'truck' },
+  { id: 'payments', title: 'Secure Payments', subtitle: '100% safe checkout', icon: 'lock' },
   { id: 'guidance', title: 'Expert Guidance', subtitle: 'Vedic astrology support', icon: 'compass' },
+  { id: 'support', title: '24/7 Customer Support', subtitle: "We're here to help", icon: 'headphones' },
+  { id: 'loved', title: 'Loved by Customers', subtitle: 'Trusted by thousands', icon: 'star' },
 ];
 
 const DEFAULT_CATEGORIES: HomeCategory[] = [

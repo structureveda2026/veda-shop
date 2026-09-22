@@ -91,11 +91,16 @@
 .animate-marquee {
   display: flex;
   width: max-content;
-  animation: marquee 30s linear infinite;
+  /* Slow and steady on purpose — this scrolls trust points people are meant to actually read. */
+  animation: marquee 48s linear infinite;
 }
 
 .animate-marquee:hover {
   animation-play-state: paused;
 }
 
-
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
