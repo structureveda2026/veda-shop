@@ -11,8 +11,8 @@ export interface AddToCartControlProps {
   /** 'compact' = icon-only on phones (tight card footers) · 'full' = icon + label always ·
    *  'cta' = same as 'full' but taller, for detail-page / modal buttons. */
   size?: 'compact' | 'full' | 'cta';
-  /** 'card' soft-gold idle button · 'solid' maroon · 'gold' gold gradient for dark surfaces. */
-  appearance?: 'card' | 'solid' | 'gold';
+  /** 'card' soft-gold idle button · 'solid' maroon · 'gold' gold gradient for dark surfaces · 'dark' charcoal (home page). */
+  appearance?: 'card' | 'solid' | 'gold' | 'dark';
   /** Idle button text (defaults to "Add"), and what it says instead when `disabled` (e.g. "Sold Out"). */
   label?: string;
   disabledLabel?: string;
@@ -57,6 +57,15 @@ const THEMES = {
     count: 'text-white',
     live: 'bg-gold-gradient text-vedic-dark',
     liveBtn: 'hover:bg-black/10 disabled:opacity-40',
+  },
+  dark: {
+    idle: 'bg-vedic-charcoal hover:bg-vedic-dark text-white border border-transparent',
+    add: 'bg-vedic-charcoal hover:bg-vedic-dark text-white',
+    picker: 'bg-white border border-vedic-charcoal/20 text-vedic-charcoal',
+    pickerBtn: 'hover:bg-vedic-gold/20 disabled:text-vedic-muted',
+    count: 'text-vedic-dark',
+    live: 'bg-vedic-charcoal text-white',
+    liveBtn: 'hover:bg-white/15 disabled:opacity-40',
   },
 } as const;
 
@@ -220,7 +229,9 @@ export const AddToCartControl: React.FC<AddToCartControlProps> = ({
           <button
             onClick={closeSelector}
             aria-label="Cancel"
-            className="w-6 h-6 shrink-0 flex items-center justify-center rounded-full text-base leading-none text-vedic-muted hover:text-vedic-maroon hover:bg-vedic-gold/10 transition-colors"
+            className={`w-6 h-6 shrink-0 flex items-center justify-center rounded-full text-base leading-none text-vedic-muted hover:bg-vedic-gold/10 transition-colors ${
+              appearance === 'dark' ? 'hover:text-vedic-dark' : 'hover:text-vedic-maroon'
+            }`}
           >
             ×
           </button>

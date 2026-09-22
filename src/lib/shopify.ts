@@ -38,7 +38,7 @@ export class ShopifyError extends Error {
   }
 }
 
-async function storefront<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+export async function storefront<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(ENDPOINT, {

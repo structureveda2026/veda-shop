@@ -24,6 +24,8 @@ export default {
           goldLight: "#FFF5DE",
           goldDark: "#E9A331",
           muted: "#666666",
+          sand: "#F4EFE6",
+          goldDeep: "#9A6B14",
         }
       },
       fontFamily: {
