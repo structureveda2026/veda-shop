@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Minus, Plus, ShoppingBag, Lock, Trash2 } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
-import { Product } from '../types/ecommerce';
+import { Product, ProductVariant } from '../types/ecommerce';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,6 +19,11 @@ export interface AddToCartControlProps {
   /** The option/fitting this line is for. Pages that let the person pick one pass it, so each
    *  option is its own cart line; leave it out and any cart line of the product counts. */
   selectedSize?: string;
+  /** Quantity chosen elsewhere on the page (a detail page with its own quantity selector). When given, Add puts
+   *  exactly this many in the cart straight away — no quantity picker. Leave it out everywhere else. */
+  fixedQuantity?: number;
+  /** The Shopify variant chosen elsewhere on the page — sent with the item so the cart line uses that variant's id and price. */
+  selectedVariant?: ProductVariant;
   /** Runs before the picker opens and again before the item is added — return false to stop
    *  (e.g. a detail page that still has required options unselected). */
   beforeAdd?: () => boolean;
@@ -95,6 +100,8 @@ export const AddToCartControl: React.FC<AddToCartControlProps> = ({
   label,
   disabledLabel,
   selectedSize,
+  fixedQuantity,
+  selectedVariant,
   beforeAdd,
   className,
   buttonClassName,
@@ -125,6 +132,10 @@ export const AddToCartControl: React.FC<AddToCartControlProps> = ({
       return;
     }
     if (beforeAdd && !beforeAdd()) return;
+    if (fixedQuantity !== undefined) {
+      addToCart(product, fixedQuantity, selectedVariant, selectedSize);
+      return;
+    }
     setQuantity(1);
     setIsSelecting(true);
   };
@@ -142,7 +153,7 @@ export const AddToCartControl: React.FC<AddToCartControlProps> = ({
   const confirmAdd = (e: React.MouseEvent) => {
     swallow(e);
     if (beforeAdd && !beforeAdd()) return;
-    addToCart(product, quantity, undefined, selectedSize);
+    addToCart(product, quantity, selectedVariant, selectedSize);
     setIsSelecting(false);
   };
 

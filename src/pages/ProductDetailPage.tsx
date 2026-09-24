@@ -1,12 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { MOCK_PRODUCTS } from '../data/products';
+import { Product, ProductVariant } from '../types/ecommerce';
+import { fetchProductDetail, isShopifyEnabled, ShopifyProductDetail } from '../lib/shopify';
+import { resolveDiscount } from '../lib/pricing';
+import {
+  OptionVariant,
+  Selection,
+  buildDemoOptions,
+  defaultSelection,
+  findVariant,
+  selectionLabel,
+  visibleOptions,
+} from '../lib/purchaseOptions';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { ProductCard } from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { AddToCartControl } from '../components/AddToCartControl';
+import { PurchaseOptionsPanel } from '../components/PurchaseOptionsPanel';
+import { BenefitBadges } from '../components/BenefitBadges';
 import { ProductGallery } from '../components/ProductGallery';
 import { CertificateViewerModal } from '../components/CertificateViewerModal';
 import { FindMyGemstoneModal } from '../components/FindMyGemstoneModal';
@@ -20,7 +34,91 @@ export const ProductDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
 
-  const product = MOCK_PRODUCTS.find((p) => p.slug === slug) || MOCK_PRODUCTS[0];
+  const baseProduct = MOCK_PRODUCTS.find((p) => p.slug === slug) || MOCK_PRODUCTS[0];
+
+  // With Shopify enabled, Shopify is the source of truth for what this page shows and sells:
+  // title, description, price / compare-at price, SKU and whether it's in stock. The local product
+  // only fills in what Shopify doesn't hold (rating, benefits, category…) and is the fallback if
+  // the request fails. The Shopify handle is the product's slug — same as the cart and gallery use.
+  const shopifyOn = isShopifyEnabled();
+  // undefined = still loading · null = Shopify has no such product / request failed · object = its data
+  const [remote, setRemote] = useState<ShopifyProductDetail | null | undefined>(undefined);
+  useEffect(() => {
+    if (!shopifyOn) return;
+    let live = true;
+    setRemote(undefined);
+    fetchProductDetail(baseProduct.slug)
+      .then((detail) => live && setRemote(detail))
+      .catch(() => live && setRemote(null));
+    return () => {
+      live = false;
+    };
+  }, [baseProduct.slug, shopifyOn]);
+  const isSyncing = shopifyOn && remote === undefined;
+
+  const isGemstone = baseProduct.category === 'gemstones';
+  // Rudraksha products (incl. kavach / rakhis) get Rudraksha wording, the Rudraksha finder in the guidance box
+  // and the purchase options (Only Bead / Silver Pendant, X-Ray Tested, Lab Certificate) under the buy buttons.
+  const isRudraksha = baseProduct.category.startsWith('rudraksha');
+
+  // Purchase options — with Shopify they are the product's own options and variants, so the price shown is the
+  // very price Shopify charges. Until Shopify is connected a demo set is used. If Shopify is on but has nothing
+  // for this product, it is simply sold as it is (no options).
+  const purchase = useMemo(() => {
+    if (!isRudraksha) return null;
+    if (remote) return { options: visibleOptions(remote.options), variants: remote.variants };
+    if (!shopifyOn) return buildDemoOptions(baseProduct);
+    return null;
+  }, [isRudraksha, remote, shopifyOn, baseProduct]);
+
+  const [picked, setPicked] = useState<Selection | null>(null);
+  useEffect(() => {
+    setPicked(null);
+  }, [purchase]);
+  const selection = useMemo<Selection>(
+    () => picked ?? (purchase ? defaultSelection(purchase.options, purchase.variants) : {}),
+    [picked, purchase]
+  );
+  const optionLabel = purchase ? selectionLabel(purchase.options, selection) : '';
+
+  // The variant this page is showing and selling right now.
+  const activeVariant = useMemo<OptionVariant | undefined>(() => {
+    if (purchase) return findVariant(purchase.variants, selection);
+    return remote ? remote.variants.find((v) => v.availableForSale) ?? remote.variants[0] : undefined;
+  }, [purchase, selection, remote]);
+  // The ticked combination has no variant in Shopify (that combination was never created) → it can't be sold.
+  const comboMissing = Boolean(purchase) && !activeVariant;
+
+  const product = useMemo<Product>(() => {
+    // Demo data (or Shopify unavailable): the % comes from the actual vs discounted price.
+    const local = resolveDiscount(baseProduct.price, baseProduct.compareAtPrice);
+    const base: Product = { ...baseProduct, compareAtPrice: local.compareAtPrice, discount: local.percent };
+    if (remote) {
+      // Prices are shown in ₹ — only trust Shopify's number when it's actually INR.
+      const inr = activeVariant?.currencyCode === 'INR';
+      return {
+        ...base,
+        title: remote.title || base.title,
+        description: remote.description || base.description,
+        sku: activeVariant?.sku || base.sku,
+        price: inr ? activeVariant!.price : base.price,
+        compareAtPrice: inr ? activeVariant!.compareAtPrice : base.compareAtPrice,
+        discount: inr ? activeVariant!.discountPercent : base.discount,
+        // Shopify only tells us in-stock / sold-out here; the cart sync trims a line to the real stock.
+        stock: activeVariant?.availableForSale ? Math.max(base.stock, 20) : 0,
+      };
+    }
+    // Demo options: price of the ticked combination.
+    if (activeVariant) {
+      return {
+        ...base,
+        price: activeVariant.price,
+        compareAtPrice: activeVariant.compareAtPrice,
+        discount: activeVariant.discountPercent,
+      };
+    }
+    return base;
+  }, [baseProduct, remote, activeVariant]);
 
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'about' | 'specifications' | 'howToWear' | 'care' | 'reviews'>('about');
@@ -37,23 +135,41 @@ export const ProductDetailPage: React.FC = () => {
   const { addRecentlyViewed } = useRecentlyViewed();
 
   useEffect(() => {
-    if (product) {
-      addRecentlyViewed(product);
+    if (baseProduct) {
+      addRecentlyViewed(baseProduct);
+      setQuantity(1);
       window.scrollTo(0, 0);
     }
   }, [slug]);
 
   const isLiked = isInWishlist(product.id);
-  const isGemstone = product.category === 'gemstones';
-  // Rudraksha products (incl. kavach / rakhis) get Rudraksha wording + the Rudraksha finder in the guidance box.
-  const isRudraksha = product.category.startsWith('rudraksha');
 
-  // The line this page's Add control works on: for gemstones each setting/fitting is its own line.
-  const cartLineOption = isGemstone ? gemOption : undefined;
+  // The line this page's Add control works on: for Rudraksha each option combination is its own line,
+  // for gemstones each setting/fitting is.
+  const cartLineOption = purchase ? optionLabel || undefined : isGemstone ? gemOption : undefined;
+  // The chosen Shopify variant travels with the cart line, so the cart adds exactly that variant at its price.
+  const cartVariant: ProductVariant | undefined =
+    purchase && activeVariant
+      ? {
+          id: activeVariant.id,
+          name: optionLabel || activeVariant.title,
+          price: product.price,
+          compareAtPrice: product.compareAtPrice,
+          inStock: activeVariant.availableForSale,
+        }
+      : undefined;
+
+  const maxQuantity = Math.min(20, product.stock > 0 ? product.stock : 20);
+
+  // Can't be bought while Shopify's price is still loading, or when Shopify says it's sold out / has no such combination.
+  const isSoldOut = product.stock === 0;
+  const cannotBuy = isSoldOut || isSyncing;
+  const unavailableLabel = comboMissing ? 'UNAVAILABLE' : 'SOLD OUT';
 
   const handleBuyNow = () => {
+    if (cannotBuy) return;
     // Already in the cart (its stepper is showing) → go straight to checkout instead of adding one more.
-    if (!getCartLine(product.id, cartLineOption)) addToCart(product, quantity, undefined, cartLineOption);
+    if (!getCartLine(product.id, cartLineOption)) addToCart(product, quantity, cartVariant, cartLineOption);
     navigate('/checkout');
   };
 
@@ -172,37 +288,48 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Price Box */}
           <div className="p-4 bg-vedic-ivory rounded-2xl border border-vedic-gold/30 space-y-1">
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-extrabold text-vedic-maroon">
-                ₹{product.price.toLocaleString('en-IN')}
-              </span>
-              {product.compareAtPrice > product.price && (
-                <span className="text-base text-vedic-muted line-through">
-                  ₹{product.compareAtPrice.toLocaleString('en-IN')}
+            {isSyncing ? (
+              <div className="h-9 w-40 rounded-lg bg-vedic-beige animate-pulse" aria-busy="true" />
+            ) : (
+              <div className="flex items-baseline gap-3">
+                <span className="text-3xl font-extrabold text-vedic-maroon">
+                  ₹{product.price.toLocaleString('en-IN')}
                 </span>
-              )}
-            </div>
+                {product.compareAtPrice > product.price && (
+                  <span className="text-base text-vedic-muted line-through">
+                    ₹{product.compareAtPrice.toLocaleString('en-IN')}
+                  </span>
+                )}
+                {product.discount > 0 && (
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                    {product.discount}% OFF
+                  </span>
+                )}
+              </div>
+            )}
             <p className="text-[10px] text-emerald-700 font-semibold">Taxes included. EMI options available.</p>
           </div>
 
-          {/* Visual Stone Attribute Chips (PDP Requirement) */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
-              Natural Mined
-            </span>
-            <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
-              {product.origin || 'Ceylon (Sri Lanka)'}
-            </span>
-            <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
-              {product.carat || 2.25} Carat
-            </span>
-            <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
-              {product.shape || 'Oval Cut'}
-            </span>
-            <span className="px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-full text-xs font-bold">
-              Untreated
-            </span>
-          </div>
+          {/* Stone attribute chips — gemstones only; Rudraksha has its options under the buy buttons instead. */}
+          {!isRudraksha && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
+                Natural Mined
+              </span>
+              <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
+                {product.origin || 'Ceylon (Sri Lanka)'}
+              </span>
+              <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
+                {product.carat || 2.25} Carat
+              </span>
+              <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
+                {product.shape || 'Oval Cut'}
+              </span>
+              <span className="px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-full text-xs font-bold">
+                Untreated
+              </span>
+            </div>
+          )}
 
           {/* Select Your Option (Part 4) — Setting / Fitting selector temporarily disabled.
               gemOption keeps its default ("Loose Stone"), so cart lines are unchanged.
@@ -252,10 +379,15 @@ export const ProductDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Natural / Treatment Disclosure Box */}
-          <div className="bg-vedic-ivory p-3 rounded-xl border border-vedic-gold/20 text-xs text-vedic-dark space-y-0.5">
-            <strong>Treatment Disclosure:</strong> {product.treatment || 'No indications of heating observed. 100% Natural Earth Mined.'}
-          </div>
+          {/* Rudraksha: benefits of this particular Rudraksha, shown as icons.
+              Stones: the Treatment Disclosure box. */}
+          {isRudraksha ? (
+            <BenefitBadges benefits={product.benefits} />
+          ) : (
+            <div className="bg-vedic-ivory p-3 rounded-xl border border-vedic-gold/20 text-xs text-vedic-dark space-y-0.5">
+              <strong>Treatment Disclosure:</strong> {product.treatment || 'No indications of heating observed. 100% Natural Earth Mined.'}
+            </div>
+          )}
 
           {/* Add to Cart & Buy Now Buttons */}
           <div className="space-y-3 pt-2">
@@ -265,17 +397,40 @@ export const ProductDetailPage: React.FC = () => {
                 size="cta"
                 appearance="solid"
                 label="ADD TO CART"
+                disabled={cannotBuy}
+                disabledLabel={isSoldOut ? unavailableLabel : undefined}
                 selectedSize={cartLineOption}
+                selectedVariant={cartVariant}
+                fixedQuantity={purchase ? quantity : undefined}
                 className="flex-1"
                 buttonClassName="py-3.5 rounded-full font-serif shadow-lg gap-2"
               />
               <button
                 onClick={handleBuyNow}
-                className="flex-1 bg-gold-gradient text-vedic-dark py-3.5 rounded-full font-serif font-bold text-xs shadow-lg hover:brightness-105 transition-all flex items-center justify-center gap-2"
+                disabled={cannotBuy}
+                className="flex-1 bg-gold-gradient text-vedic-dark py-3.5 rounded-full font-serif font-bold text-xs shadow-lg hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 BUY NOW <ArrowRight className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Under the buttons: pick Only Bead / Silver Pendant, tick X-Ray Tested / Lab Certificate, set quantity. */}
+            {purchase && (
+              <PurchaseOptionsPanel
+                options={purchase.options}
+                variants={purchase.variants}
+                selection={selection}
+                onSelect={(name, value) => setPicked({ ...selection, [name]: value })}
+                quantity={quantity}
+                onQuantity={setQuantity}
+                maxQuantity={maxQuantity}
+              />
+            )}
+            {comboMissing && (
+              <p className="text-xs font-semibold text-red-700">
+                This combination isn't available right now — please change your selection.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -363,9 +518,13 @@ export const ProductDetailPage: React.FC = () => {
       <div className="fixed bottom-12 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-vedic-gold/30 p-3 flex md:hidden items-center justify-between shadow-2xl gap-3">
         <div>
           <span className="text-[10px] text-vedic-muted block">Total Price:</span>
-          <span className="text-base font-extrabold text-vedic-maroon">
-            ₹{product.price.toLocaleString('en-IN')}
-          </span>
+          {isSyncing ? (
+            <span className="block h-6 w-16 rounded bg-vedic-beige animate-pulse" aria-busy="true" />
+          ) : (
+            <span className="text-base font-extrabold text-vedic-maroon">
+              ₹{product.price.toLocaleString('en-IN')}
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <AddToCartControl
@@ -373,12 +532,17 @@ export const ProductDetailPage: React.FC = () => {
             size="cta"
             appearance="solid"
             label="ADD TO CART"
+            disabled={cannotBuy}
+            disabledLabel={isSoldOut ? unavailableLabel : undefined}
             selectedSize={cartLineOption}
+            selectedVariant={cartVariant}
+            fixedQuantity={purchase ? quantity : undefined}
             buttonClassName="px-4 py-2.5 rounded-full shadow"
           />
           <button
             onClick={handleBuyNow}
-            className="bg-vedic-gold text-vedic-dark text-xs font-bold px-4 py-2.5 rounded-full shadow"
+            disabled={cannotBuy}
+            className="bg-vedic-gold text-vedic-dark text-xs font-bold px-4 py-2.5 rounded-full shadow disabled:opacity-40 disabled:cursor-not-allowed"
           >
             BUY NOW
           </button>

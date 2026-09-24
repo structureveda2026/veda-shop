@@ -1,4 +1,5 @@
 import type { CartItem } from '../types/ecommerce';
+import { resolveDiscount } from './pricing';
 
 /**
  * Shopify Storefront API — cart client.
@@ -333,4 +334,119 @@ function toMediaItem(m: RawMedia): ProductMediaItem[] {
   }
 
   return []; // 3D models etc. aren't shown in the gallery
+}
+
+
+// ---------------------------------------------------------------------------
+// Product details (title, description, options, variants with price / SKU / availability)
+// ---------------------------------------------------------------------------
+
+/** A product option as set up in Shopify admin (Products → Variants → Options), e.g. "Type": Only Bead / Silver Pendant. */
+export interface ShopifyProductOption {
+  name: string;
+  values: string[];
+}
+
+export interface ShopifyVariantDetail {
+  /** ProductVariant gid — what the cart line is created for. */
+  id: string;
+  title: string;
+  sku: string;
+  /** Whether this variant can be bought right now (Shopify's own stock / "continue selling" rules). */
+  availableForSale: boolean;
+  /** Discounted (selling) price, actual price and discount % — worked out by resolveDiscount() from Shopify's
+   *  price / compare-at price / `custom.discount_percentage` metafield. compareAtPrice = price and
+   *  discountPercent = 0 when there's no discount. */
+  price: number;
+  compareAtPrice: number;
+  discountPercent: number;
+  currencyCode: string;
+  /** This variant's value for every option, e.g. { Type: 'Silver Pendant', 'X-Ray Tested': 'Yes' }. */
+  options: Record<string, string>;
+}
+
+export interface ShopifyProductDetail {
+  title: string;
+  description: string;
+  options: ShopifyProductOption[];
+  variants: ShopifyVariantDetail[];
+}
+
+interface RawDetailVariant {
+  id: string;
+  title: string;
+  sku?: string | null;
+  availableForSale: boolean;
+  price: { amount: string; currencyCode: string };
+  compareAtPrice?: { amount: string } | null;
+  selectedOptions: { name: string; value: string }[];
+}
+
+const detailCache = new Map<string, Promise<ShopifyProductDetail | null>>();
+
+/** What the owner has set in Shopify admin for a product. Returns null when no product has that handle. */
+export function fetchProductDetail(handle: string): Promise<ShopifyProductDetail | null> {
+  let pending = detailCache.get(handle);
+  if (!pending) {
+    pending = storefront<{
+      product: {
+        title: string;
+        description: string;
+        discountPercentage?: { value: string } | null;
+        options: ShopifyProductOption[];
+        variants: { nodes: RawDetailVariant[] };
+      } | null;
+    }>(
+      `query ProductDetail($handle: String!, $country: CountryCode!) @inContext(country: $country) {
+         product(handle: $handle) {
+           title
+           description
+           discountPercentage: metafield(namespace: "custom", key: "discount_percentage") { value }
+           options { name values }
+           variants(first: 100) {
+             nodes {
+               id
+               title
+               sku
+               availableForSale
+               price { amount currencyCode }
+               compareAtPrice { amount }
+               selectedOptions { name value }
+             }
+           }
+         }
+       }`,
+      { handle, country: BUYER_COUNTRY }
+    ).then((data) => {
+      const product = data.product;
+      if (!product || product.variants.nodes.length === 0) return null;
+      const percent = product.discountPercentage ? parseFloat(product.discountPercentage.value) : null;
+      return {
+        title: product.title,
+        description: product.description,
+        options: product.options,
+        variants: product.variants.nodes.map((v) => {
+          const pricing = resolveDiscount(
+            parseFloat(v.price.amount),
+            v.compareAtPrice ? parseFloat(v.compareAtPrice.amount) : null,
+            percent
+          );
+          return {
+            id: v.id,
+            title: v.title,
+            sku: v.sku || '',
+            availableForSale: v.availableForSale,
+            price: pricing.price,
+            compareAtPrice: pricing.compareAtPrice,
+            discountPercent: pricing.percent,
+            currencyCode: v.price.currencyCode,
+            options: Object.fromEntries(v.selectedOptions.map((o) => [o.name, o.value])),
+          };
+        }),
+      };
+    });
+    detailCache.set(handle, pending);
+    pending.catch(() => detailCache.delete(handle));
+  }
+  return pending;
 }
