@@ -42,6 +42,10 @@ export interface Review {
   location?: string;
   productPurchased?: string;
   userImage?: string;
+  // Photos/videos the reviewer attached to their review (data URLs in demo mode,
+  // hosted media URLs once a real reviews backend/app is connected).
+  images?: string[];
+  videos?: string[];
 }
 
 export interface Product {

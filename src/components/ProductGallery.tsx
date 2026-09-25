@@ -227,13 +227,13 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({ title, handle, i
 
   if (loading) {
     return (
-      <div className={`flex gap-3 items-stretch animate-pulse ${className}`} aria-busy="true">
-        <div className="w-16 sm:w-[5.5rem] shrink-0 flex flex-col gap-2 sm:gap-3 p-1">
+      <div className={`flex flex-col md:flex-row gap-3 items-stretch animate-pulse ${className}`} aria-busy="true">
+        <div className="order-2 md:order-1 w-full md:w-[5.5rem] shrink-0 flex flex-row md:flex-col gap-2 sm:gap-3 p-1">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="w-14 h-14 sm:w-20 sm:h-20 rounded-2xl bg-vedic-beige" />
           ))}
         </div>
-        <div className="flex-1 min-w-0 aspect-square rounded-3xl bg-vedic-beige" />
+        <div className="order-1 md:order-2 flex-1 min-w-0 aspect-square rounded-3xl bg-vedic-beige" />
       </div>
     );
   }
@@ -241,11 +241,14 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({ title, handle, i
   if (!current) return null;
 
   return (
-    <div className={`flex gap-3 items-stretch ${className}`}>
-      {/* Thumbnails — vertical, on the left */}
+    <div className={`flex flex-col md:flex-row gap-3 items-stretch ${className}`}>
+      {/* Thumbnails — a horizontal row below the picture on mobile, a vertical column on the left from md up */}
       {items.length > 1 && (
-        <div className="relative w-16 sm:w-[5.5rem] shrink-0">
-          <div ref={columnRef} className="absolute inset-0 overflow-y-auto no-scrollbar flex flex-col gap-2 sm:gap-3 p-1">
+        <div className="relative order-2 md:order-1 w-full md:w-[5.5rem] shrink-0">
+          <div
+            ref={columnRef}
+            className="md:absolute md:inset-0 overflow-x-auto md:overflow-x-visible overflow-y-visible md:overflow-y-auto no-scrollbar flex flex-row md:flex-col gap-2 sm:gap-3 p-1"
+          >
             {items.map((item, idx) => (
               <button
                 key={item.id}
@@ -282,7 +285,7 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({ title, handle, i
       )}
 
       {/* Main picture / video */}
-      <div className="flex-1 min-w-0 aspect-square rounded-3xl overflow-hidden bg-vedic-beige border border-vedic-gold/30 shadow-card relative group flex flex-col items-center justify-center">
+      <div className="order-1 md:order-2 flex-1 min-w-0 aspect-square rounded-3xl overflow-hidden bg-vedic-beige border border-vedic-gold/30 shadow-card relative group flex flex-col items-center justify-center">
         {/* The card is never left with white space: a blurred copy of the picture fills any gap around it
             (sides, when the photo isn't square) and its edges are mirrored above / below (see EdgeFill). */}
         {current.kind === 'image' && (

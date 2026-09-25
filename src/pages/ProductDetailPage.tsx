@@ -23,6 +23,7 @@ import { PurchaseOptionsPanel } from '../components/PurchaseOptionsPanel';
 import { BenefitBadges } from '../components/BenefitBadges';
 import { ProductGallery } from '../components/ProductGallery';
 import { CertificateViewerModal } from '../components/CertificateViewerModal';
+import { ProductReviewsSection } from '../components/ProductReviewsSection';
 import { FindMyGemstoneModal } from '../components/FindMyGemstoneModal';
 import { FindMyProductModal } from '../components/FindMyProductModal';
 import {
@@ -500,12 +501,30 @@ export const ProductDetailPage: React.FC = () => {
 
         {activeTab === 'specifications' && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Mineral Family</span><strong>{product.material || 'Corundum'}</strong></div>
-            <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Carat Weight</span><strong>{product.carat || 2.25} Ct</strong></div>
-            <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Origin</span><strong>{product.origin || 'Ceylon'}</strong></div>
-            <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Treatment</span><strong>{product.treatment || 'Untreated'}</strong></div>
-            <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Shape & Cut</span><strong>{product.shape || 'Oval'}</strong></div>
-            <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Certification Lab</span><strong>{product.certificationLab || 'GTL Lab'}</strong></div>
+            {isRudraksha ? (
+              // Rudraksha has no carat/mineral-family concept — these fields come from Shopify
+              // product metafields once connected (per-Mukhi origin, bead size, certification…);
+              // demo defaults from the local catalog fill in until then.
+              <>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Mukhi (Faces)</span><strong>{product.mukhi || 'Standard'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Origin</span><strong>{product.origin || 'Nepal (Himalayan Region)'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Bead Size</span><strong>{product.sizes?.[0] || product.dimensions || '—'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Weight</span><strong>{product.weight || '—'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Material</span><strong>{product.material || '100% Original Authentic Rudraksha'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Certification</span><strong>{product.labCertified ? (product.certificationLab || 'X-Ray Tested & Lab Certified') : 'Not Certified'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Energization</span><strong>{product.energizationNote || 'Traditionally Energized before dispatch'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Recommended Rashi</span><strong>{product.rashi?.join(', ') || 'All Rashis'}</strong></div>
+              </>
+            ) : (
+              <>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Mineral Family</span><strong>{product.material || 'Corundum'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Carat Weight</span><strong>{product.carat || 2.25} Ct</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Origin</span><strong>{product.origin || 'Ceylon'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Treatment</span><strong>{product.treatment || 'Untreated'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Shape & Cut</span><strong>{product.shape || 'Oval'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Certification Lab</span><strong>{product.certificationLab || 'GTL Lab'}</strong></div>
+              </>
+            )}
           </div>
         )}
 
@@ -525,55 +544,7 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'reviews' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-vedic-beige pb-3">
-              <span className="font-serif font-bold text-sm text-vedic-brown">Customer Reviews</span>
-              <span className="text-xs text-vedic-goldDark font-bold">5.0 Star Rating</span>
-            </div>
-            <div className="space-y-3 text-xs text-vedic-charcoal">
-              <div className="bg-vedic-ivory p-4 rounded-2xl border border-vedic-gold/20">
-                <div className="flex justify-between font-bold text-vedic-maroon"><span>Aarav S.</span><span>5.0 ★</span></div>
-                <p className="mt-1">"Original natural gemstone with X-Ray lab report. Pristine quality!"</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Sticky Mobile Add to Cart Bottom Bar (Part 19 Requirement) */}
-      <div className="fixed bottom-12 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-vedic-gold/30 p-3 flex md:hidden items-center justify-between shadow-2xl gap-3">
-        <div>
-          <span className="text-[10px] text-vedic-muted block">Total Price:</span>
-          {isSyncing ? (
-            <span className="block h-6 w-16 rounded bg-vedic-beige animate-pulse" aria-busy="true" />
-          ) : (
-            <span className="text-base font-extrabold text-vedic-maroon">
-              ₹{product.price.toLocaleString('en-IN')}
-            </span>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <AddToCartControl
-            product={product}
-            size="cta"
-            appearance="solid"
-            label="ADD TO CART"
-            disabled={cannotBuy}
-            disabledLabel={isSoldOut ? unavailableLabel : undefined}
-            selectedSize={cartLineOption}
-            selectedVariant={cartVariant}
-            fixedQuantity={purchase ? quantity : undefined}
-            buttonClassName="px-4 py-2.5 rounded-full shadow"
-          />
-          <button
-            onClick={handleBuyNow}
-            disabled={cannotBuy}
-            className="bg-vedic-gold text-vedic-dark text-xs font-bold px-4 py-2.5 rounded-full shadow disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            BUY NOW
-          </button>
-        </div>
+        {activeTab === 'reviews' && <ProductReviewsSection product={product} />}
       </div>
 
       {/* Related Products */}
