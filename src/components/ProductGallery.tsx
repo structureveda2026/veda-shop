@@ -157,6 +157,28 @@ const Lightbox: React.FC<{
   );
 };
 
+/**
+ * Fills the space above / below a picture that is shorter than its card (the card grows with the info card
+ * beside it): the picture's own top / bottom edge, stretched and softened, so it carries on seamlessly
+ * instead of leaving white bands and the card reads as just the image.
+ */
+const EdgeFill: React.FC<{ url: string; side: 'top' | 'bottom' }> = ({ url, side }) => (
+  <div aria-hidden="true" className="relative w-full flex-1 min-h-0 overflow-hidden pointer-events-none">
+    <div
+      className="absolute -inset-4 blur-md"
+      style={{
+        backgroundImage: `url("${sized(url, 160)}")`,
+        backgroundRepeat: 'no-repeat',
+        // only the first / last few rows of the picture, stretched tall; flipped so that the row touching
+        // the picture is the one sitting right at the seam
+        backgroundSize: '100% 3000%',
+        backgroundPosition: side === 'top' ? 'center top' : 'center bottom',
+        transform: 'scaleY(-1)',
+      }}
+    />
+  </div>
+);
+
 export const ProductGallery: React.FC<ProductGalleryProps> = ({ title, handle, images, videos, overlay, className = '' }) => {
   const useShopify = isShopifyEnabled() && Boolean(handle);
   // undefined = still loading · null = Shopify has no such product / request failed · array = its media
@@ -260,18 +282,30 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({ title, handle, i
       )}
 
       {/* Main picture / video */}
-      <div className="flex-1 min-w-0 aspect-square rounded-3xl overflow-hidden bg-white border border-vedic-gold/30 shadow-card relative group flex items-center justify-center p-3">
+      <div className="flex-1 min-w-0 aspect-square rounded-3xl overflow-hidden bg-vedic-beige border border-vedic-gold/30 shadow-card relative group flex flex-col items-center justify-center">
+        {/* The card is never left with white space: a blurred copy of the picture fills any gap around it
+            (sides, when the photo isn't square) and its edges are mirrored above / below (see EdgeFill). */}
+        {current.kind === 'image' && (
+          <img
+            src={sized(current.url, 160)}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="absolute inset-0 w-full h-full object-cover scale-125 blur-2xl pointer-events-none"
+          />
+        )}
+        {current.kind === 'image' && <EdgeFill url={current.url} side="top" />}
         {current.kind === 'image' ? (
           <button
             onClick={() => setFullView(true)}
             aria-label="Open full view"
-            className="w-full h-full flex items-center justify-center cursor-zoom-in"
+            className="relative w-full aspect-square shrink-0 flex items-center justify-center cursor-zoom-in"
           >
             <MediaView
               item={current}
               title={title}
               width={1200}
-              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500 rounded-2xl"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
             />
           </button>
         ) : (
@@ -279,9 +313,10 @@ export const ProductGallery: React.FC<ProductGalleryProps> = ({ title, handle, i
             item={current}
             title={title}
             width={1200}
-            className={current.kind === 'embed' ? 'w-full aspect-video rounded-2xl' : 'w-full h-full object-contain rounded-2xl'}
+            className={current.kind === 'embed' ? 'w-full aspect-video' : 'w-full h-full object-contain'}
           />
         )}
+        {current.kind === 'image' && <EdgeFill url={current.url} side="bottom" />}
 
         {overlay}
 

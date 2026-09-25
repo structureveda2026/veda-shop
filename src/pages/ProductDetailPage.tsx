@@ -30,6 +30,18 @@ import {
   Sparkles, Share2, Info, HelpCircle, Phone, FileText, Lock, Compass
 } from 'lucide-react';
 
+// WhatsApp's own logo — lucide-react has no brand icon for it, so it's drawn inline (currentColor, like the others).
+const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+    <path d="M12.01 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.36 5.07L2 22l5.06-1.33A9.94 9.94 0 0 0 12.01 22C17.53 22 22 17.52 22 12S17.53 2 12.01 2Zm5.78 14.12c-.24.68-1.4 1.33-1.93 1.4-.5.07-1.06.1-1.71-.11a12.9 12.9 0 0 1-1.87-.7c-3.3-1.43-5.32-4.79-5.48-5.01-.16-.22-1.31-1.74-1.31-3.33 0-1.58.83-2.36 1.12-2.68.29-.32.63-.4.84-.4h.6c.19 0 .45-.04.7.54.24.58.83 2 .9 2.15.08.15.13.32.02.52-.1.2-.16.32-.31.5-.16.18-.33.4-.47.53-.16.15-.32.32-.14.63.19.31.83 1.37 1.78 2.22 1.22 1.09 2.25 1.43 2.56 1.59.31.16.5.13.68-.08.19-.2.79-.92.99-1.24.2-.31.4-.26.68-.16.28.1 1.78.84 2.08 1 .31.15.51.23.58.36.08.13.08.75-.16 1.44Z"/>
+  </svg>
+);
+
+// Passed as a query string, this becomes the message that's already typed in when the chat opens.
+const WHATSAPP_NUMBER = '919621340116';
+const whatsappChatUrl = (subject: string) =>
+  `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hi, I'd like to know more about ${subject}.`)}`;
+
 export const ProductDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -176,6 +188,35 @@ export const ProductDetailPage: React.FC = () => {
   const relatedProducts = MOCK_PRODUCTS.filter(
     (p) => p.category === product.category && p.id !== product.id
   ).slice(0, 4);
+
+  // "Is this … right for you?" box (Finder + Consult Astrologer). Rendered in one place per product type — see below.
+  const guidanceBox = (
+    <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 space-y-2">
+      <h4 className="font-serif font-bold text-xs text-amber-900 flex items-center gap-1.5">
+        <Compass className="w-4 h-4 text-vedic-gold" /> Is this {isRudraksha ? 'Rudraksha' : 'gemstone'} right for you?
+      </h4>
+      <p className="text-[11px] text-amber-900 leading-snug">
+        {isRudraksha ? 'Rudraksha' : 'Gemstone'} suitability depends on individual astrological factors. Get personalized guidance before purchase.
+      </p>
+      <div className="flex items-center justify-between gap-3 pt-1 text-xs">
+        <button
+          onClick={() => setIsFinderOpen(true)}
+          className="font-bold text-vedic-maroon hover:underline"
+        >
+          CHECK MY {isRudraksha ? 'RUDRAKSHA' : 'GEMSTONE'} →
+        </button>
+        <a
+          href={whatsappChatUrl(isRudraksha ? 'a Rudraksha' : 'a gemstone')}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 font-bold text-[#25D366] hover:underline"
+        >
+          <WhatsAppIcon className="w-4 h-4" />
+          CHAT ON WHATSAPP
+        </a>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-12 bg-vedic-ivory text-vedic-dark pb-24 md:pb-12">
@@ -358,26 +399,28 @@ export const ProductDetailPage: React.FC = () => {
           </div>
           */}
 
-          {/* Astrological Guidance Box */}
-          <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 space-y-2">
-            <h4 className="font-serif font-bold text-xs text-amber-900 flex items-center gap-1.5">
-              <Compass className="w-4 h-4 text-vedic-gold" /> Is this {isRudraksha ? 'Rudraksha' : 'gemstone'} right for you?
-            </h4>
-            <p className="text-[11px] text-amber-900 leading-snug">
-              {isRudraksha ? 'Rudraksha' : 'Gemstone'} suitability depends on individual astrological factors. Get personalized guidance before purchase.
-            </p>
-            <div className="flex gap-3 pt-1 text-xs">
-              <button
-                onClick={() => setIsFinderOpen(true)}
-                className="font-bold text-vedic-maroon hover:underline"
-              >
-                CHECK MY {isRudraksha ? 'RUDRAKSHA' : 'GEMSTONE'} →
-              </button>
-              <Link to={`/contact?subject=${isRudraksha ? 'Rudraksha' : 'Gemstone'}%20Consultation`} className="font-bold text-vedic-goldDark hover:underline">
-                CONSULT ASTROLOGER →
-              </Link>
+          {/* Gemstones keep the guidance box here; on Rudraksha pages it sits at the very bottom of the card. */}
+          {!isRudraksha && guidanceBox}
+
+          {/* Rudraksha purchase options: Type (Only Bead / Silver Pendant), X-Ray Tested, Lab Certificate, Quantity. */}
+          {purchase && (
+            <div className="space-y-2.5">
+              <PurchaseOptionsPanel
+                options={purchase.options}
+                variants={purchase.variants}
+                selection={selection}
+                onSelect={(name, value) => setPicked({ ...selection, [name]: value })}
+                quantity={quantity}
+                onQuantity={setQuantity}
+                maxQuantity={maxQuantity}
+              />
+              {comboMissing && (
+                <p className="text-xs font-semibold text-red-700">
+                  This combination isn't available right now — please change your selection.
+                </p>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Rudraksha: benefits of this particular Rudraksha, shown as icons.
               Stones: the Treatment Disclosure box. */}
@@ -413,25 +456,9 @@ export const ProductDetailPage: React.FC = () => {
                 BUY NOW <ArrowRight className="w-4 h-4" />
               </button>
             </div>
-
-            {/* Under the buttons: pick Only Bead / Silver Pendant, tick X-Ray Tested / Lab Certificate, set quantity. */}
-            {purchase && (
-              <PurchaseOptionsPanel
-                options={purchase.options}
-                variants={purchase.variants}
-                selection={selection}
-                onSelect={(name, value) => setPicked({ ...selection, [name]: value })}
-                quantity={quantity}
-                onQuantity={setQuantity}
-                maxQuantity={maxQuantity}
-              />
-            )}
-            {comboMissing && (
-              <p className="text-xs font-semibold text-red-700">
-                This combination isn't available right now — please change your selection.
-              </p>
-            )}
           </div>
+
+          {isRudraksha && guidanceBox}
         </div>
       </div>
 
