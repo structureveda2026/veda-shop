@@ -68,7 +68,7 @@ export const MegaMenu: React.FC = () => {
             onMouseLeave={() => setActiveMenu(null)}
           >
             <Link
-              to="/collections/bracelets"
+              to="/bracelets"
               className="flex items-center gap-1 hover:text-vedic-maroon transition-colors py-1 px-2.5 rounded-full hover:bg-white/60"
             >
               <span>BRACELETS</span>

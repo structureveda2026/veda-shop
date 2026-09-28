@@ -1,10 +1,37 @@
 import React from 'react';
 import { BraceletHero } from '../components/BraceletHero';
+import { BraceletTrustBar } from '../components/BraceletTrustBar';
+import { BraceletCategoryNav } from '../components/BraceletCategoryNav';
+import { BraceletShopByPurpose } from '../components/BraceletShopByPurpose';
+import { BraceletShopByMaterial } from '../components/BraceletShopByMaterial';
+import { BraceletBestsellers } from '../components/BraceletBestsellers';
+import { BraceletShopByMukhi } from '../components/BraceletShopByMukhi';
+import { BraceletShopByGemstone } from '../components/BraceletShopByGemstone';
+import { BraceletShopByRashi } from '../components/BraceletShopByRashi';
+import { BraceletShopByPlanet } from '../components/BraceletShopByPlanet';
+import { BraceletFindYourStyle } from '../components/BraceletFindYourStyle';
+import { BraceletTileGrid } from '../components/BraceletTileGrid';
+import { BraceletPersonalize } from '../components/BraceletPersonalize';
+import { BraceletGuidanceCTA } from '../components/BraceletGuidanceCTA';
+import { BraceletWhySection } from '../components/BraceletWhySection';
+import { BraceletHowToChoose } from '../components/BraceletHowToChoose';
+import { BraceletAuthenticity } from '../components/BraceletAuthenticity';
+import { BraceletReviews } from '../components/BraceletReviews';
+import { BraceletFAQ } from '../components/BraceletFAQ';
+import { BraceletLearnHub } from '../components/BraceletLearnHub';
+import { BraceletFinalCTA } from '../components/BraceletFinalCTA';
+import {
+  getBraceletStyleTiles,
+  getBraceletGiftingTiles,
+  getBraceletPremiumTiles
+} from '../services/braceletCatalogService';
 
-// /collections/bracelets — the dedicated Bracelets landing page (per spec: Discover → Choose by
-// Type → Choose by Purpose → Compare → Trust → Buy → Personalize). Built section by section,
-// following the same reusable/data-driven pattern as RudrakshaPage — this page must not need a
-// redesign when new bracelet materials, purposes, or products are added later (spec Section 42).
+// /bracelets — the dedicated Bracelets landing page (per spec: Discover → Choose by Type →
+// Choose by Purpose → Compare → Trust → Buy → Personalize). Same reusable/data-driven pattern as
+// RudrakshaPage: a new material, gemstone, purpose, Rashi, planet, style or occasion is a data
+// change in braceletCatalogService.ts / braceletContentService.ts, never a redesign (spec §42).
+// /collections/bracelets stays the generic filterable listing (CategoryPage), same split as
+// /rudraksha vs /collections/rudraksha.
 export const BraceletsPage: React.FC = () => {
   const scrollToFindMyBracelet = () => {
     document.getElementById('find-my-bracelet')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -12,17 +39,54 @@ export const BraceletsPage: React.FC = () => {
 
   return (
     <div className="bg-vedic-ivory">
-      {/* Section 1 (spec): Hero — heading, subheading, "Shop All Bracelets" (primary) and
-          "Find My Bracelet" (secondary) CTAs. Single premium banner image, no product grid. */}
       <BraceletHero onFindBraceletClick={scrollToFindMyBracelet} />
-
-      {/* Next up (spec order):
-          Section 2  — Trust Bar (Authentic Products / Quality Checked / Secure Packaging / Expert Guidance)
-          Section 3  — Quick Category Navigation (Rudraksha / Gemstone / Crystal / Karungali / Combination / Premium / Custom)
-          Section 4  — Shop By Purpose (Protection, Peace & Meditation, Focus, Prosperity, Confidence, Spiritual Growth, Rashi, Daily Wear)
-          Section 5  — Shop By Material (data-driven grid, new material = no redesign)
-          Section 6  — Bestsellers carousel
-          ...continuing through the full 42-section spec, each as its own reusable, data-driven component. */}
+      <BraceletTrustBar />
+      <BraceletCategoryNav />
+      <BraceletShopByPurpose />
+      <BraceletShopByMaterial />
+      <BraceletBestsellers />
+      <BraceletShopByMukhi />
+      <BraceletShopByGemstone />
+      <BraceletShopByRashi />
+      <BraceletShopByPlanet />
+      <BraceletFindYourStyle />
+      <BraceletTileGrid
+        id="style-collection"
+        eyebrow="Style Collection"
+        title="Wear Your Spirituality"
+        ctaLabel="Shop All Styles"
+        ctaHref="/collections/bracelets"
+        load={getBraceletStyleTiles}
+        background="white"
+      />
+      <BraceletPersonalize />
+      <BraceletGuidanceCTA />
+      <BraceletWhySection />
+      <BraceletHowToChoose />
+      <BraceletTileGrid
+        id="bracelet-gifting"
+        eyebrow="Gifting"
+        title="A Meaningful Gift for Someone Special"
+        ctaLabel="Shop Gifts"
+        ctaHref="/collections/bracelets"
+        load={getBraceletGiftingTiles}
+        background="ivory"
+      />
+      <BraceletTileGrid
+        id="premium-collection"
+        eyebrow="Premium Collection"
+        title="Veda Premium Bracelets"
+        subtitle="Dark luxury — premium materials and limited runs."
+        ctaLabel="Explore Premium"
+        ctaHref="/collections/bracelets"
+        load={getBraceletPremiumTiles}
+        background="dark"
+      />
+      <BraceletAuthenticity />
+      <BraceletReviews />
+      <BraceletFAQ />
+      <BraceletLearnHub />
+      <BraceletFinalCTA onFindBraceletClick={scrollToFindMyBracelet} />
     </div>
   );
 };
