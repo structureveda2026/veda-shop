@@ -61,7 +61,17 @@ export const CATEGORIES: Category[] = [
       { name: 'Ganesh Puja Kit', slug: 'ganesh-puja-kit', description: 'Everything needed for Siddhivinayak blessings.' },
       { name: 'Lakshmi Puja Kit', slug: 'lakshmi-puja-kit', description: 'Diwali & Friday prosperity puja package.' },
       { name: 'Navgraha Shanti Kit', slug: 'navgraha-kit', description: '9 planetary pacification samagri set.' },
-      { name: 'Satyanarayan Kit', slug: 'satyanarayan-kit', description: 'Full samagri set for Satyanarayan Katha.' }
+      { name: 'Satyanarayan Kit', slug: 'satyanarayan-kit', description: 'Full samagri set for Satyanarayan Katha.' },
+      { name: 'Griha Pravesh Kit', slug: 'griha-pravesh-kit', description: 'Traditional samagri for a housewarming puja.' },
+      { name: 'Hanuman Puja Kit', slug: 'hanuman-puja-kit', description: 'Tuesday, Saturday & Hanuman Jayanti worship set.' },
+      { name: 'Durga Puja Kit', slug: 'durga-puja-kit', description: 'Navratri Devi puja & Kanya Pujan samagri.' },
+      { name: 'Daily Puja Kit', slug: 'daily-puja-kit', description: 'Everyday essentials for your home mandir.' }
+    ],
+    seoText: 'Veda Store puja kits bring together the dry samagri traditionally used for a particular puja — Rudrabhishek, Ganesh, Lakshmi, Satyanarayan, Navagraha and more — in one sealed box, with a simple step-by-step vidhi guide. Fresh items such as flowers, fruits and milk are best bought on the day of the puja.',
+    faqs: [
+      { question: 'What is included in a puja kit?', answer: 'Each kit lists its full samagri under "What\'s inside" on the product page, along with a step-by-step vidhi guide.' },
+      { question: 'Can I perform the puja at home without a pandit?', answer: 'Many families do, by following the vidhi guide. If you would like a pandit to guide or perform the puja, contact us and we will help you arrange it.' },
+      { question: 'Do I need to buy anything separately?', answer: 'Fresh items such as flowers, fruits, milk and curd are best bought fresh on the day of the puja. The kit covers the dry samagri.' }
     ]
   },
   {

@@ -1,4 +1,5 @@
 import { Product } from '../types/ecommerce';
+import { PUJA_KIT_PRODUCTS } from './pujaKitData';
 
 export const MOCK_PRODUCTS: Product[] = [
   // RUDRAKSHA PRODUCTS (1 Mukhi to 14 Mukhi + Gauri Shankar + Ganesh)
@@ -1337,5 +1338,8 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
     labCertified: true,
     isBestseller: true
-  }
+  },
+
+  // PUJA KITS (category 'puja-kits') — defined in ./pujaKitData.ts so the kit catalog lives in one place
+  ...PUJA_KIT_PRODUCTS
 ];

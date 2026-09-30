@@ -245,7 +245,7 @@ export const MegaMenu: React.FC = () => {
             onMouseLeave={() => setActiveMenu(null)}
           >
             <Link
-              to="/collections/puja-kits"
+              to="/puja-kits"
               className="flex items-center gap-1 hover:text-vedic-maroon transition-colors py-1 px-2.5 rounded-full hover:bg-white/60"
             >
               <span>PUJA KIT</span>
@@ -258,10 +258,11 @@ export const MegaMenu: React.FC = () => {
                   Everything You Need for Your Puja
                 </div>
                 <div className="space-y-1.5 text-xs normal-case font-medium">
-                  <Link to="/collections/puja-kits" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Daily Puja Kits</Link>
-                  <Link to="/collections/puja-kits" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Festival Puja Kits</Link>
-                  <Link to="/collections/puja-kits" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Special Occasion Kits</Link>
-                  <Link to="/collections/puja-kits" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Carefully Selected Samagri</Link>
+                  <Link to="/puja-kits?type=daily-puja-kit" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Daily Puja Kits</Link>
+                  <Link to="/puja-kits#puja-by-occasion" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Festival Puja Kits</Link>
+                  <Link to="/puja-kits?occasion=griha-pravesh" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Special Occasion Kits</Link>
+                  <Link to="/collections/puja-samagri" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Carefully Selected Samagri</Link>
+                  <Link to="/puja-kits" className="block text-vedic-goldDeep font-bold py-1 px-2 rounded hover:bg-vedic-ivory">Explore All Puja Kits →</Link>
                 </div>
               </div>
             )}

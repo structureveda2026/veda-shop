@@ -40,7 +40,7 @@ const BANNERS = [
     subtitle: 'Thoughtfully assembled ritual samagri kits & sacred items sourced directly from holy Varanasi ghats.',
     badge: 'VARANASI BLESSED • COMPLETE SAMAGRI KITS',
     ctaText: 'SHOP PUJA KITS',
-    link: '/collections/puja-kits',
+    link: '/puja-kits',
     tags: ['Pure Samagri', 'Step-by-Step Manual', 'Festive Ready']
   }
 ];
@@ -247,5 +247,3 @@ export const HeroBannerSlider: React.FC = () => {
     </section>
   );
 };
-
-

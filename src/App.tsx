@@ -17,6 +17,7 @@ import { AuthModal } from './components/AuthModal';
 import { HomePage } from './pages/HomePage';
 import { RudrakshaPage } from './pages/RudrakshaPage';
 import { BraceletsPage } from './pages/BraceletsPage';
+import { PujaKitsPage } from './pages/PujaKitsPage';
 import { ShopPage } from './pages/ShopPage';
 import { CategoryPage } from './pages/CategoryPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
@@ -117,6 +118,7 @@ export const App: React.FC = () => {
                     {/* Learn & Guides */}
                     <Route path="/rudraksha" element={<RudrakshaPage />} />
                     <Route path="/bracelets" element={<BraceletsPage />} />
+                    <Route path="/puja-kits" element={<PujaKitsPage />} />
                     <Route path="/guides/rudraksha" element={<RudrakshaGuidePage />} />
                     <Route path="/guides/gemstone" element={<GemstoneGuidePage />} />
                     <Route path="/guides/puja" element={<PujaGuidePage />} />

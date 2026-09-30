@@ -170,9 +170,9 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
             {openSection === 'puja' && (
               <div className="p-3 space-y-1.5 border-t border-vedic-beige text-xs font-medium text-vedic-charcoal">
                 <Link to="/collections/puja-samagri" onClick={onClose} className="block py-1 font-semibold text-vedic-maroon">Puja Samagri & Essentials</Link>
-                <Link to="/collections/puja-kits" onClick={onClose} className="block py-1 font-semibold text-vedic-maroon">Complete Puja Kits</Link>
-                <Link to="/collections/puja-kits?type=rudrabhishek" onClick={onClose} className="block py-1">Rudrabhishek Kit</Link>
-                <Link to="/collections/puja-kits?deity=shiv" onClick={onClose} className="block py-1">Shiv Puja Kit</Link>
+                <Link to="/puja-kits" onClick={onClose} className="block py-1 font-semibold text-vedic-maroon">Complete Puja Kits</Link>
+                <Link to="/puja-kits?type=rudrabhishek-kit" onClick={onClose} className="block py-1">Rudrabhishek Kit</Link>
+                <Link to="/puja-kits?type=shiv-puja-kit" onClick={onClose} className="block py-1">Shiv Puja Kit</Link>
               </div>
             )}
           </div>
