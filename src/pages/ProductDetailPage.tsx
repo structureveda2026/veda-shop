@@ -26,9 +26,10 @@ import { CertificateViewerModal } from '../components/CertificateViewerModal';
 import { ProductReviewsSection } from '../components/ProductReviewsSection';
 import { FindMyGemstoneModal } from '../components/FindMyGemstoneModal';
 import { FindMyProductModal } from '../components/FindMyProductModal';
+import { PUJA_KIT_META } from '../data/pujaKitData';
 import {
   Star, ShieldCheck, Truck, Heart, ArrowRight, CheckCircle2,
-  Sparkles, Share2, Info, HelpCircle, Phone, FileText, Lock, Compass
+  Sparkles, Share2, Info, HelpCircle, Phone, FileText, Lock, Compass, BookOpen, Package, Users
 } from 'lucide-react';
 
 // WhatsApp's own logo — lucide-react has no brand icon for it, so it's drawn inline (currentColor, like the others).
@@ -73,6 +74,12 @@ export const ProductDetailPage: React.FC = () => {
   // Rudraksha products (incl. kavach / rakhis) get Rudraksha wording, the Rudraksha finder in the guidance box
   // and the purchase options (Only Bead / Silver Pendant, X-Ray Tested, Lab Certificate) under the buy buttons.
   const isRudraksha = baseProduct.category.startsWith('rudraksha');
+  // Puja kits / puja samagri are not stones: no carat, cut, treatment or lab report. They get kit facts
+  // (deity, serves, weight), a "What's inside" list, puja-vidhi wording and a "which kit / talk to a pandit" box.
+  const isPujaKit = baseProduct.category === 'puja-kits' || baseProduct.category === 'puja-samagri';
+  // Kit contents & facts (Shopify: custom.kit_contents / kit_deity / kit_serves metafields — see data/pujaKitData.ts).
+  const kitMeta = useMemo(() => PUJA_KIT_META.find((m) => m.slug === baseProduct.slug), [baseProduct.slug]);
+  const kitContents = kitMeta?.contents ?? [];
 
   // Purchase options — with Shopify they are the product's own options and variants, so the price shown is the
   // very price Shopify charges. Until Shopify is connected a demo set is used. If Shopify is on but has nothing
@@ -190,8 +197,31 @@ export const ProductDetailPage: React.FC = () => {
     (p) => p.category === product.category && p.id !== product.id
   ).slice(0, 4);
 
-  // "Is this … right for you?" box (Finder + Consult Astrologer). Rendered in one place per product type — see below.
-  const guidanceBox = (
+  // Guidance box. Gemstone / Rudraksha: "Is this … right for you?" (Finder + WhatsApp). Puja kit: which kit / vidhi help.
+  const guidanceBox = isPujaKit ? (
+    <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 space-y-2">
+      <h4 className="font-serif font-bold text-xs text-amber-900 flex items-center gap-1.5">
+        <Compass className="w-4 h-4 text-vedic-gold" /> Not sure which kit suits your puja?
+      </h4>
+      <p className="text-[11px] text-amber-900 leading-snug">
+        Tell us the deity or occasion and we'll help you pick the right kit — pandit support is available for the vidhi.
+      </p>
+      <div className="flex items-center justify-between gap-3 pt-1 text-xs">
+        <Link to="/puja-kits#puja-kit-finder" className="font-bold text-vedic-maroon hover:underline">
+          FIND MY KIT →
+        </Link>
+        <a
+          href={whatsappChatUrl('this puja kit')}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 font-bold text-[#25D366] hover:underline"
+        >
+          <WhatsAppIcon className="w-4 h-4" />
+          ASK A PANDIT ON WHATSAPP
+        </a>
+      </div>
+    </div>
+  ) : (
     <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 space-y-2">
       <h4 className="font-serif font-bold text-xs text-amber-900 flex items-center gap-1.5">
         <Compass className="w-4 h-4 text-vedic-gold" /> Is this {isRudraksha ? 'Rudraksha' : 'gemstone'} right for you?
@@ -234,7 +264,7 @@ export const ProductDetailPage: React.FC = () => {
       {isRudraksha ? (
         <FindMyProductModal isOpen={isFinderOpen} onClose={() => setIsFinderOpen(false)} />
       ) : (
-        <FindMyGemstoneModal isOpen={isFinderOpen} onClose={() => setIsFinderOpen(false)} />
+        !isPujaKit && <FindMyGemstoneModal isOpen={isFinderOpen} onClose={() => setIsFinderOpen(false)} />
       )}
 
       {/* Breadcrumb */}
@@ -352,8 +382,22 @@ export const ProductDetailPage: React.FC = () => {
             <p className="text-[10px] text-emerald-700 font-semibold">Taxes included. EMI options available.</p>
           </div>
 
+          {/* Puja kit facts — who it's for, how much it serves, weight. (No stone attributes on a puja kit.) */}
+          {isPujaKit && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {[kitMeta?.deity, kitMeta?.serves, product.weight && `Net ${product.weight}`, 'Vidhi Guide Included'].filter(Boolean).map((chip) => (
+                <span key={chip as string} className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
+                  {chip}
+                </span>
+              ))}
+              <span className="px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-full text-xs font-bold">
+                Sealed &amp; Fresh
+              </span>
+            </div>
+          )}
+
           {/* Stone attribute chips — gemstones only; Rudraksha has its options under the buy buttons instead. */}
-          {!isRudraksha && (
+          {!isRudraksha && !isPujaKit && (
             <div className="flex flex-wrap gap-2 pt-1">
               <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
                 Natural Mined
@@ -401,7 +445,7 @@ export const ProductDetailPage: React.FC = () => {
           */}
 
           {/* Gemstones keep the guidance box here; on Rudraksha pages it sits at the very bottom of the card. */}
-          {!isRudraksha && guidanceBox}
+          {!isRudraksha && !isPujaKit && guidanceBox}
 
           {/* Rudraksha purchase options: Type (Only Bead / Silver Pendant), X-Ray Tested, Lab Certificate, Quantity. */}
           {purchase && (
@@ -425,7 +469,43 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Rudraksha: benefits of this particular Rudraksha, shown as icons.
               Stones: the Treatment Disclosure box. */}
-          {isRudraksha ? (
+          {isPujaKit ? (
+            <div className="space-y-4">
+              {kitContents.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-vedic-dark uppercase tracking-wider">What's inside this kit</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {kitContents.slice(0, 8).map((item) => (
+                      <span key={item} className="px-2.5 py-1 bg-vedic-ivory border border-vedic-gold/25 rounded-full text-[11px] font-semibold text-vedic-dark">
+                        {item}
+                      </span>
+                    ))}
+                    {kitContents.length > 8 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('specifications')}
+                        className="px-2.5 py-1 rounded-full text-[11px] font-bold text-vedic-maroon border border-vedic-maroon/30 hover:bg-vedic-maroon hover:text-white transition-colors"
+                      >
+                        +{kitContents.length - 8} more
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { Icon: BookOpen, label: 'Step-by-step vidhi guide' },
+                  { Icon: Package, label: 'Sealed & secure packaging' },
+                  { Icon: Users, label: 'Pandit support available' },
+                ].map(({ Icon, label }) => (
+                  <div key={label} className="flex flex-col items-center text-center gap-1.5 p-2.5 rounded-xl bg-vedic-ivory border border-vedic-gold/20">
+                    <Icon className="w-5 h-5 text-vedic-maroon" strokeWidth={1.75} />
+                    <span className="text-[10px] font-semibold leading-tight text-vedic-dark">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : isRudraksha ? (
             <BenefitBadges benefits={product.benefits} />
           ) : (
             <div className="bg-vedic-ivory p-3 rounded-xl border border-vedic-gold/20 text-xs text-vedic-dark space-y-0.5">
@@ -459,7 +539,7 @@ export const ProductDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {isRudraksha && guidanceBox}
+          {(isRudraksha || isPujaKit) && guidanceBox}
         </div>
       </div>
 
@@ -467,10 +547,10 @@ export const ProductDetailPage: React.FC = () => {
       <div className="bg-white rounded-3xl p-6 md:p-8 border border-vedic-gold/20 shadow-card space-y-6">
         <div className="flex border-b border-vedic-gold/20 space-x-6 overflow-x-auto no-scrollbar">
           {[
-            { key: 'about', label: 'Overview & Traditional Association' },
-            { key: 'specifications', label: 'Gemological Specifications' },
-            { key: 'howToWear', label: 'How to Wear & Energization' },
-            { key: 'care', label: 'Care & Maintenance' },
+            { key: 'about', label: isPujaKit ? 'Overview' : 'Overview & Traditional Association' },
+            { key: 'specifications', label: isPujaKit ? "What's Inside & Kit Details" : 'Gemological Specifications' },
+            { key: 'howToWear', label: isPujaKit ? 'How to Perform the Puja' : 'How to Wear & Energization' },
+            { key: 'care', label: isPujaKit ? 'Storage & Freshness' : 'Care & Maintenance' },
             { key: 'reviews', label: `Reviews (${product.reviewCount})` },
           ].map((tab) => (
             <button
@@ -492,16 +572,56 @@ export const ProductDetailPage: React.FC = () => {
           <div className="space-y-4 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
             <h3 className="font-serif font-bold text-lg text-vedic-maroon">Product Overview</h3>
             <p>{product.description}</p>
-            <h4 className="font-serif font-bold text-base text-vedic-brown pt-2">Traditional Vedic Association</h4>
-            <p className="bg-vedic-ivory p-4 rounded-2xl border border-vedic-gold/20 italic">
-              "In Vedic astrological tradition, this gemstone is traditionally associated with balancing planetary frequencies and inviting divine grace."
-            </p>
+            {isPujaKit ? (
+              <>
+                <h4 className="font-serif font-bold text-base text-vedic-brown pt-2">Why a complete kit</h4>
+                <p className="bg-vedic-ivory p-4 rounded-2xl border border-vedic-gold/20 italic">
+                  "Puja is traditionally performed with sincerity and the right samagri at hand. This kit brings the dry samagri together with a simple vidhi guide, so nothing is missed on the day."
+                </p>
+              </>
+            ) : (
+              <>
+                <h4 className="font-serif font-bold text-base text-vedic-brown pt-2">Traditional Vedic Association</h4>
+                <p className="bg-vedic-ivory p-4 rounded-2xl border border-vedic-gold/20 italic">
+                  "In Vedic astrological tradition, this gemstone is traditionally associated with balancing planetary frequencies and inviting divine grace."
+                </p>
+              </>
+            )}
           </div>
         )}
 
         {activeTab === 'specifications' && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            {isRudraksha ? (
+          <div className={isPujaKit ? 'space-y-5' : 'grid grid-cols-2 md:grid-cols-4 gap-4 text-xs'}>
+            {isPujaKit ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                  <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Kit For</span><strong>{kitMeta?.deity || 'Puja'}</strong></div>
+                  <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Suitable For</span><strong>{kitMeta?.serves || 'Home puja'}</strong></div>
+                  <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Net Weight</span><strong>{product.weight || '—'}</strong></div>
+                  <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Items in Kit</span><strong>{kitContents.length > 0 ? kitContents.length : '—'}</strong></div>
+                  <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Material</span><strong>{product.material || 'Pure puja samagri, packed & sealed'}</strong></div>
+                  <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Includes</span><strong>Step-by-step vidhi guide</strong></div>
+                  <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Packaging</span><strong>Sealed &amp; moisture-safe</strong></div>
+                  <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Delivery</span><strong>Ships across India</strong></div>
+                </div>
+                {kitContents.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-serif font-bold text-base text-vedic-brown">Complete samagri list</h4>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-xs md:text-sm text-vedic-charcoal">
+                      {kitContents.map((item) => (
+                        <li key={item} className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-vedic-gold shrink-0 mt-0.5" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-[11px] text-vedic-muted pt-1">
+                      Fresh items such as flowers, fruits, milk and curd are best bought fresh on the day of the puja.
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : isRudraksha ? (
               // Rudraksha has no carat/mineral-family concept — these fields come from Shopify
               // product metafields once connected (per-Mukhi origin, bead size, certification…);
               // demo defaults from the local catalog fill in until then.
@@ -528,7 +648,16 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'howToWear' && (
+        {activeTab === 'howToWear' && isPujaKit && (
+          <div className="space-y-3 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
+            <p><strong>Prepare:</strong> Bathe, wear clean clothes and clean the puja space. Keep the samagri from this kit and fresh items (flowers, fruit, milk) ready.</p>
+            <p><strong>Sankalp &amp; invocation:</strong> Light the diya, take the sankalp and invoke the deity, following the vidhi guide included in the kit.</p>
+            <p><strong>Offerings:</strong> Offer the samagri in the order given in the guide — kumkum, akshat, chandan, flowers, dhoop and aarti.</p>
+            <p><strong>Conclude:</strong> Finish with aarti and prasad. A pandit can guide you over WhatsApp if you have any doubt about the vidhi.</p>
+          </div>
+        )}
+
+        {activeTab === 'howToWear' && !isPujaKit && (
           <div className="space-y-3 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
             <p><strong>Metal:</strong> Gold, Silver, or Panchdhatu as per birth chart requirement.</p>
             <p><strong>Finger:</strong> Prescribed finger based on planet (e.g. Ring finger for Sun, Little finger for Mercury, Middle finger for Saturn).</p>
@@ -536,7 +665,15 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'care' && (
+        {activeTab === 'care' && isPujaKit && (
+          <div className="space-y-2 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
+            <p>• {product.careInstructions || 'Store unused samagri in a cool, dry place.'}</p>
+            <p>• Keep the pouches sealed after opening to keep the fragrance and freshness.</p>
+            <p>• Keep away from direct sunlight, moisture and children.</p>
+          </div>
+        )}
+
+        {activeTab === 'care' && !isPujaKit && (
           <div className="space-y-2 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
             <p>• Clean gently using warm soapy water and a soft cloth.</p>
             <p>• Avoid harsh chemicals, household cleaners, and extreme heat.</p>
