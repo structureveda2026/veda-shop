@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { NAVAGRAHA_GEMSTONES, PLANET_LIST } from '../data/gemstoneData';
+import { CATEGORIES } from '../data/categories';
+
+// Puja kit types for the PUJA KIT menu — read from the `puja-kits` category (data/categories.ts), so a new
+// kit type added there shows up in this menu automatically. Each one opens /puja-kits filtered to that type.
+const PUJA_KIT_TYPES = CATEGORIES.find((c) => c.slug === 'puja-kits')?.subcategories ?? [];
 
 export const MegaMenu: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -253,16 +258,50 @@ export const MegaMenu: React.FC = () => {
             </Link>
 
             {activeMenu === 'pujakit' && (
-              <div className="absolute right-0 top-full w-80 bg-white rounded-b-2xl shadow-2xl border border-vedic-gold/30 p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="text-[11px] font-bold text-vedic-goldDark uppercase tracking-widest mb-3 border-b border-vedic-beige pb-2">
-                  Everything You Need for Your Puja
+              <div className="absolute right-0 top-full w-[560px] bg-white rounded-b-2xl shadow-2xl border border-vedic-gold/30 p-5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="flex items-center justify-between border-b border-vedic-beige pb-2 mb-3">
+                  <span className="text-[11px] font-bold text-vedic-goldDark uppercase tracking-widest">
+                    Everything You Need for Your Puja
+                  </span>
+                  <Link
+                    to="/puja-kits"
+                    onClick={() => setActiveMenu(null)}
+                    className="text-[11px] font-bold text-vedic-maroon hover:underline"
+                  >
+                    Explore All Puja Kits →
+                  </Link>
                 </div>
-                <div className="space-y-1.5 text-xs normal-case font-medium">
-                  <Link to="/puja-kits?type=daily-puja-kit" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Daily Puja Kits</Link>
-                  <Link to="/puja-kits#puja-by-occasion" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Festival Puja Kits</Link>
-                  <Link to="/puja-kits?occasion=griha-pravesh" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Special Occasion Kits</Link>
-                  <Link to="/collections/puja-samagri" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Carefully Selected Samagri</Link>
-                  <Link to="/puja-kits" className="block text-vedic-goldDeep font-bold py-1 px-2 rounded hover:bg-vedic-ivory">Explore All Puja Kits →</Link>
+
+                <div className="grid grid-cols-[1fr_auto] gap-5">
+                  {/* Shop by puja kit — one entry per kit type, each opens that category */}
+                  <div>
+                    <span className="text-[11px] font-bold text-vedic-maroon uppercase tracking-wider block mb-2">
+                      Shop by Puja Kit
+                    </span>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs normal-case font-medium">
+                      {PUJA_KIT_TYPES.map((type) => (
+                        <Link
+                          key={type.slug}
+                          to={`/puja-kits?type=${type.slug}`}
+                          onClick={() => setActiveMenu(null)}
+                          title={type.description}
+                          className="px-2 py-1.5 rounded border border-transparent hover:border-vedic-gold/30 hover:bg-vedic-ivory hover:text-vedic-maroon transition-colors"
+                        >
+                          {type.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Quick links */}
+                  <div className="w-44 bg-vedic-ivory p-3 rounded-xl border border-vedic-gold/20 text-xs normal-case font-medium flex flex-col gap-0.5">
+                    <span className="text-[11px] font-bold text-vedic-maroon uppercase tracking-wider block border-b border-vedic-gold/20 pb-1 mb-1.5">
+                      By Occasion
+                    </span>
+                    <Link to="/puja-kits#puja-by-occasion" onClick={() => setActiveMenu(null)} className="block hover:text-vedic-maroon py-1">Festival Puja Kits</Link>
+                    <Link to="/puja-kits?occasion=griha-pravesh" onClick={() => setActiveMenu(null)} className="block hover:text-vedic-maroon py-1">Special Occasion Kits</Link>
+                    <Link to="/collections/puja-samagri" onClick={() => setActiveMenu(null)} className="block hover:text-vedic-maroon py-1 mt-1.5 pt-2 border-t border-vedic-gold/20">Carefully Selected Samagri</Link>
+                  </div>
                 </div>
               </div>
             )}

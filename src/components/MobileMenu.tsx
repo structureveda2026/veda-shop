@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { X, ChevronRight, ChevronDown, Phone, ShieldCheck, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { CATEGORIES } from '../data/categories';
+
+// Every puja kit type, read from the `puja-kits` category (data/categories.ts) — same source as the desktop menu.
+const PUJA_KIT_TYPES = CATEGORIES.find((c) => c.slug === 'puja-kits')?.subcategories ?? [];
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -169,18 +173,13 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
             </button>
             {openSection === 'puja' && (
               <div className="p-3 space-y-1.5 border-t border-vedic-beige text-xs font-medium text-vedic-charcoal">
-
-                <Link
-                  to="/puja-kits"
-                  onClick={onClose}
-                  className="block mb-3 text-center py-2 rounded-lg bg-vedic-maroon text-vedic-ivory text-xs font-bold"
-                >
-                  View Puja Kit →
-                </Link>
                 <Link to="/collections/puja-samagri" onClick={onClose} className="block py-1 font-semibold text-vedic-maroon">Puja Samagri & Essentials</Link>
                 <Link to="/puja-kits" onClick={onClose} className="block py-1 font-semibold text-vedic-maroon">Complete Puja Kits</Link>
-                <Link to="/puja-kits?type=rudrabhishek-kit" onClick={onClose} className="block py-1">Rudrabhishek Kit</Link>
-                <Link to="/puja-kits?type=shiv-puja-kit" onClick={onClose} className="block py-1">Shiv Puja Kit</Link>
+                {PUJA_KIT_TYPES.map((type) => (
+                  <Link key={type.slug} to={`/puja-kits?type=${type.slug}`} onClick={onClose} className="block py-1 pl-3 border-l-2 border-vedic-gold/30">
+                    {type.name}
+                  </Link>
+                ))}
               </div>
             )}
           </div>
