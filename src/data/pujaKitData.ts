@@ -1,4 +1,5 @@
 import type { Product } from '../types/ecommerce';
+import { resolveKitImages } from './pujaKitImages';
 
 /**
  * PUJA KITS — catalog data.
@@ -21,14 +22,15 @@ import type { Product } from '../types/ecommerce';
  * (A product with no meta entry still shows up — the service derives sensible defaults from its tags.)
  *
  * Prices/ratings below are placeholders like every other mock product in this project.
- * Photos: drop a real image into public/images/puja-kits/<slug>.jpg and set `photo` on the kit —
- * until then a themed placeholder is shown, so no image is ever broken.
+ * Photos: every kit's photo comes from the /public folder — see data/pujaKitImages.ts (slug → file name).
+ * When Shopify is connected, the product's Shopify images replace them (resolveKitImages(..., remote)).
+ * The themed placeholder below stays as the last fallback, so no image is ever broken.
  */
 
 // ---------------------------------------------------------------------------
 // Themed placeholder art (pure SVG data-URI — no external request, no font needed).
 // ---------------------------------------------------------------------------
-type Accent = 'saffron' | 'gold' | 'rose' | 'indigo' | 'sage' | 'earth';
+export type Accent = 'saffron' | 'gold' | 'rose' | 'indigo' | 'sage' | 'earth';
 
 const ACCENT_COLOR: Record<Accent, string> = {
   saffron: '#E9A331',
@@ -39,7 +41,7 @@ const ACCENT_COLOR: Record<Accent, string> = {
   earth: '#8A6A45'
 };
 
-function kitArt(accent: Accent): string {
+export function kitArt(accent: Accent): string {
   const c = ACCENT_COLOR[accent];
   const petals = Array.from({ length: 12 }, (_, i) =>
     `<ellipse cx="300" cy="190" rx="24" ry="72" fill="${c}" fill-opacity=".16" transform="rotate(${i * 30} 300 300)"/>`
@@ -85,7 +87,7 @@ interface KitInput {
   tags: string[];
   bestseller?: boolean;
   isNew?: boolean;
-  /** Optional real product photo (path under /public). Falls back to the themed art when unset. */
+  /** Optional one-off photo override (path under /public). Normally leave unset — see data/pujaKitImages.ts. */
   photo?: string;
 }
 
@@ -97,7 +99,7 @@ const kit = (k: KitInput): Product => ({
   subcategory: k.subcategory,
   description: k.description,
   shortDescription: k.short,
-  images: k.photo ? [k.photo, kitArt(k.accent)] : [kitArt(k.accent)],
+  images: resolveKitImages(k.slug, kitArt(k.accent), k.photo ? [k.photo] : undefined),
   price: k.price,
   compareAtPrice: k.compareAt,
   discount: Math.round(((k.compareAt - k.price) / k.compareAt) * 100),

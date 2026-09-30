@@ -169,6 +169,14 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
             </button>
             {openSection === 'puja' && (
               <div className="p-3 space-y-1.5 border-t border-vedic-beige text-xs font-medium text-vedic-charcoal">
+
+                <Link
+                  to="/puja-kits"
+                  onClick={onClose}
+                  className="block mb-3 text-center py-2 rounded-lg bg-vedic-maroon text-vedic-ivory text-xs font-bold"
+                >
+                  View Puja Kit →
+                </Link>
                 <Link to="/collections/puja-samagri" onClick={onClose} className="block py-1 font-semibold text-vedic-maroon">Puja Samagri & Essentials</Link>
                 <Link to="/puja-kits" onClick={onClose} className="block py-1 font-semibold text-vedic-maroon">Complete Puja Kits</Link>
                 <Link to="/puja-kits?type=rudrabhishek-kit" onClick={onClose} className="block py-1">Rudrabhishek Kit</Link>

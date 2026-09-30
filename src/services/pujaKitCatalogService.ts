@@ -229,6 +229,10 @@ function localKits(): PujaKitView[] {
  *     }`);
  *   return data.collection.products.nodes.map(mapShopifyProductToPujaKit);   // → PujaKitView
  *
+ * Images: build `product.images` with `resolveKitImages(node.handle, kitArt('saffron'), node.images.nodes.map((n) => n.url))`
+ * (data/pujaKitImages.ts + kitArt from data/pujaKitData.ts) — Shopify photos win, the themed art stays as the fallback.
+ * Until then every kit's photo comes from the /public folder (data/pujaKitImages.ts).
+ *
  * `product.subcategory` must equal one of the puja-kits subcategory slugs (use a `custom.kit_type` metafield
  * or a tag) — that single value is what drives the type tiles and finder chips.
  * Any Shopify hiccup returns [] and the page shows its friendly "coming soon" state instead of crashing.
