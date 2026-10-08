@@ -96,7 +96,11 @@ export const CATEGORIES: Category[] = [
       { name: 'Shree Yantra', slug: 'shree-yantra', description: 'Supreme geometry for wealth & abundance.' },
       { name: 'Kuber Yantra', slug: 'kuber-yantra', description: 'Attract financial stability & luck.' },
       { name: 'Mahamrityunjay Yantra', slug: 'mahamrityunjay-yantra', description: 'Health, longevity & protection shield.' },
-      { name: 'Navgraha Yantra', slug: 'navgraha-yantra', description: 'Comprehensive 9-planet balancing frame.' }
+      { name: 'Navgraha Yantra', slug: 'navgraha-yantra', description: 'Comprehensive 9-planet balancing frame.' },
+      { name: 'Vastu Yantra', slug: 'vastu-yantra', description: 'Traditionally placed at the entrance or centre of a home or office.' },
+      { name: 'Durga Yantra', slug: 'durga-yantra', description: 'Devi worship for Navratri and everyday protection symbolism.' },
+      { name: 'Saraswati Yantra', slug: 'saraswati-yantra', description: 'For students, learners and creative work.' },
+      { name: 'Ganesh Yantra', slug: 'ganesh-yantra', description: 'Worshipped before new beginnings.' }
     ]
   },
   {

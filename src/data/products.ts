@@ -1,5 +1,6 @@
 import { Product } from '../types/ecommerce';
 import { PUJA_KIT_PRODUCTS } from './pujaKitData';
+import { YANTRA_PRODUCTS } from './yantraData';
 
 export const MOCK_PRODUCTS: Product[] = [
   // RUDRAKSHA PRODUCTS (1 Mukhi to 14 Mukhi + Gauri Shankar + Ganesh)
@@ -1341,5 +1342,30 @@ export const MOCK_PRODUCTS: Product[] = [
   },
 
   // PUJA KITS (category 'puja-kits') — defined in ./pujaKitData.ts so the kit catalog lives in one place
-  ...PUJA_KIT_PRODUCTS
+  ...PUJA_KIT_PRODUCTS,
+
+  // YANTRAS (category 'yantra') — defined in ./yantraData.ts so the yantra catalog lives in one place
+  ...YANTRA_PRODUCTS
 ];
+
+/**
+ * Products that arrive at runtime (Shopify landing-page catalogs) are added here so the product page, wishlist,
+ * recently-viewed and "You may also like" can find them by slug, exactly like the demo products. A product with a slug
+ * that already exists replaces the demo copy.
+ *
+ * `replaceCategory`: once Shopify has returned that category's real catalog, the demo products of the same category that
+ * Shopify doesn't have are dropped — so a connected store never shows demo yantras next to its own.
+ */
+export function registerRuntimeProducts(list: Product[], replaceCategory?: Product['category']): void {
+  if (replaceCategory && list.length > 0) {
+    const keep = new Set(list.map((p) => p.slug));
+    for (let i = MOCK_PRODUCTS.length - 1; i >= 0; i--) {
+      if (MOCK_PRODUCTS[i].category === replaceCategory && !keep.has(MOCK_PRODUCTS[i].slug)) MOCK_PRODUCTS.splice(i, 1);
+    }
+  }
+  for (const product of list) {
+    const i = MOCK_PRODUCTS.findIndex((p) => p.slug === product.slug);
+    if (i >= 0) MOCK_PRODUCTS[i] = product;
+    else MOCK_PRODUCTS.push(product);
+  }
+}

@@ -474,7 +474,7 @@ const DEFAULT_CATEGORIES: HomeCategory[] = [
   { id: 'rudraksha', key: 'rudraksha', title: 'Rudraksha', description: 'Authentic Rudraksha & sacred beads', image: DEMO_IMAGES.rudraksha, href: '/rudraksha', status: 'live' },
   { id: 'gemstones', key: 'gemstones', title: 'Gemstones', description: 'Vedic & natural gemstone collection', image: CATEGORY_IMAGES.gemstones, href: '/gemstones', status: 'coming_soon' },
   { id: 'bracelets', key: 'bracelets', title: 'Bracelets', description: 'Rudraksha, gemstone & crystal bracelets', image: DEMO_IMAGES.bracelets, href: '/collections/bracelets', status: 'live' },
-  { id: 'yantra', key: 'yantra', title: 'Yantra', description: 'Traditional sacred Yantras', image: CATEGORY_IMAGES.yantra, href: '/collections/yantra', status: 'coming_soon' },
+  { id: 'yantra', key: 'yantra', title: 'Yantra', description: 'Traditional sacred Yantras', image: CATEGORY_IMAGES.yantra, href: '/yantra', status: 'live' },
   { id: 'puja-samagri', key: 'puja-samagri', title: 'Puja Samagri', description: 'Essential products for your rituals', image: CATEGORY_IMAGES['puja-samagri'], href: '/collections/puja-samagri', status: 'coming_soon' },
   { id: 'puja-yagya', key: 'puja-yagya', title: 'Puja & Yagya', description: 'Online Vedic services', image: CATEGORY_IMAGES['puja-yagya'], href: '/collections/sawan-special-puja', status: 'coming_soon' },
 ];

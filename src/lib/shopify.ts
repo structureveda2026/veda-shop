@@ -450,3 +450,181 @@ export function fetchProductDetail(handle: string): Promise<ShopifyProductDetail
   }
   return pending;
 }
+
+// ---------------------------------------------------------------------------
+// Collection products (landing pages: Yantra, and any future one)
+// ---------------------------------------------------------------------------
+
+/** One product of a Shopify collection, already priced (INR-aware discount rule) and flattened for the storefront. */
+export interface ShopifyCollectionProduct {
+  /** Product gid. */
+  productId: string;
+  /** The variant a plain "Add to cart" sells — first one available for sale, else the first one. ProductVariant gid. */
+  variantId: string;
+  handle: string;
+  title: string;
+  description: string;
+  tags: string[];
+  productType: string;
+  sku: string;
+  availableForSale: boolean;
+  /** Image URLs in the order the owner arranged them in Shopify admin. */
+  images: string[];
+  /** Discounted (selling) price, actual price and discount % — see resolveDiscount() in lib/pricing.ts. */
+  price: number;
+  compareAtPrice: number;
+  discountPercent: number;
+  currencyCode: string;
+  /** Requested product metafields (namespace `custom`), keyed by metafield key. Only keys that have a value are present. */
+  metafields: Record<string, string>;
+}
+
+interface RawCollectionVariant {
+  id: string;
+  sku?: string | null;
+  availableForSale: boolean;
+  price: { amount: string; currencyCode: string };
+  compareAtPrice?: { amount: string } | null;
+}
+
+interface RawCollectionProduct {
+  id: string;
+  handle: string;
+  title: string;
+  description: string;
+  tags: string[];
+  productType: string;
+  availableForSale: boolean;
+  images: { nodes: { url: string }[] };
+  variants: { nodes: RawCollectionVariant[] };
+  discountPercentage?: { value: string } | null;
+  [alias: string]: unknown;
+}
+
+interface CollectionPage {
+  collection: {
+    products: {
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
+      nodes: RawCollectionProduct[];
+    };
+  } | null;
+}
+
+const METAFIELD_KEY = /^[a-z0-9_]+$/i;
+const collectionCache = new Map<string, Promise<ShopifyCollectionProduct[]>>();
+
+/**
+ * Every product in a Shopify collection (by collection handle), with the `custom.<key>` metafields asked for.
+ * Pages through the collection (100 per request, up to 500 products). Returns [] when no collection has that handle.
+ * Cached per collection for the page's lifetime; a fresh page load always sees the latest catalog.
+ *
+ * Product access works with the public Storefront token — metafields must be exposed to the Storefront API
+ * in Shopify admin (Settings → Custom data → Products → the metafield → "Storefront access").
+ */
+export function fetchCollectionProducts(
+  collectionHandle: string,
+  metafieldKeys: string[] = []
+): Promise<ShopifyCollectionProduct[]> {
+  const cacheKey = `${collectionHandle}|${metafieldKeys.join(',')}`;
+  let pending = collectionCache.get(cacheKey);
+  if (!pending) {
+    pending = loadCollectionProducts(collectionHandle, metafieldKeys);
+    collectionCache.set(cacheKey, pending);
+    // A failed load must not be cached — the next visit retries it.
+    pending.catch(() => collectionCache.delete(cacheKey));
+  }
+  return pending;
+}
+
+async function loadCollectionProducts(
+  collectionHandle: string,
+  metafieldKeys: string[]
+): Promise<ShopifyCollectionProduct[]> {
+  const keys = metafieldKeys.filter((k) => METAFIELD_KEY.test(k));
+  const metafieldFields = keys.map((k, i) => `mf${i}: metafield(namespace: "custom", key: "${k}") { value }`).join('\n');
+
+  const query = `
+    query CollectionProducts($handle: String!, $after: String, $country: CountryCode!) @inContext(country: $country) {
+      collection(handle: $handle) {
+        products(first: 100, after: $after) {
+          pageInfo { hasNextPage endCursor }
+          nodes {
+            id
+            handle
+            title
+            description
+            tags
+            productType
+            availableForSale
+            images(first: 6) { nodes { url } }
+            discountPercentage: metafield(namespace: "custom", key: "discount_percentage") { value }
+            variants(first: 25) {
+              nodes {
+                id
+                sku
+                availableForSale
+                price { amount currencyCode }
+                compareAtPrice { amount }
+              }
+            }
+            ${metafieldFields}
+          }
+        }
+      }
+    }`;
+
+  const out: ShopifyCollectionProduct[] = [];
+  let after: string | null = null;
+
+  for (let page = 0; page < 5; page++) {
+    const data: CollectionPage = await storefront<CollectionPage>(query, {
+      handle: collectionHandle,
+      after,
+      country: BUYER_COUNTRY,
+    });
+
+    if (!data.collection) return [];
+    const { nodes, pageInfo } = data.collection.products;
+
+    for (const node of nodes) {
+      const variants = node.variants.nodes;
+      if (variants.length === 0) continue; // nothing to sell
+      const variant = variants.find((v) => v.availableForSale) ?? variants[0];
+      const percent = node.discountPercentage ? parseFloat(node.discountPercentage.value) : null;
+      const pricing = resolveDiscount(
+        parseFloat(variant.price.amount),
+        variant.compareAtPrice ? parseFloat(variant.compareAtPrice.amount) : null,
+        percent
+      );
+
+      const metafields: Record<string, string> = {};
+      keys.forEach((k, i) => {
+        const raw = node[`mf${i}`] as { value?: string } | null | undefined;
+        if (raw?.value) metafields[k] = raw.value;
+      });
+
+      out.push({
+        productId: node.id,
+        variantId: variant.id,
+        handle: node.handle,
+        title: node.title,
+        description: node.description,
+        tags: node.tags,
+        productType: node.productType,
+        sku: variant.sku || '',
+        availableForSale: node.availableForSale && variants.some((v) => v.availableForSale),
+        images: node.images.nodes.map((n) => n.url),
+        price: pricing.price,
+        compareAtPrice: pricing.compareAtPrice,
+        discountPercent: pricing.percent,
+        currencyCode: variant.price.currencyCode,
+        metafields,
+      });
+    }
+
+    if (!pageInfo.hasNextPage || !pageInfo.endCursor) break;
+    after = pageInfo.endCursor;
+  }
+
+  return out;
+}

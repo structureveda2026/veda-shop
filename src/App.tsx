@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -18,6 +18,7 @@ import { HomePage } from './pages/HomePage';
 import { RudrakshaPage } from './pages/RudrakshaPage';
 import { BraceletsPage } from './pages/BraceletsPage';
 import { PujaKitsPage } from './pages/PujaKitsPage';
+import { YantraPage } from './pages/YantraPage';
 import { ShopPage } from './pages/ShopPage';
 import { CategoryPage } from './pages/CategoryPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
@@ -119,6 +120,8 @@ export const App: React.FC = () => {
                     <Route path="/rudraksha" element={<RudrakshaPage />} />
                     <Route path="/bracelets" element={<BraceletsPage />} />
                     <Route path="/puja-kits" element={<PujaKitsPage />} />
+                    <Route path="/yantra" element={<YantraPage />} />
+                    <Route path="/yantras" element={<Navigate to="/yantra" replace />} />
                     <Route path="/guides/rudraksha" element={<RudrakshaGuidePage />} />
                     <Route path="/guides/gemstone" element={<GemstoneGuidePage />} />
                     <Route path="/guides/puja" element={<PujaGuidePage />} />

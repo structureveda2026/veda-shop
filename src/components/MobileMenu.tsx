@@ -7,6 +7,9 @@ import { CATEGORIES } from '../data/categories';
 // Every puja kit type, read from the `puja-kits` category (data/categories.ts) — same source as the desktop menu.
 const PUJA_KIT_TYPES = CATEGORIES.find((c) => c.slug === 'puja-kits')?.subcategories ?? [];
 
+// Every yantra type, read from the `yantra` category (data/categories.ts) — same source as the desktop menu.
+const YANTRA_TYPES = CATEGORIES.find((c) => c.slug === 'yantra')?.subcategories ?? [];
+
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
@@ -158,7 +161,33 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose }) => {
             )}
           </div>
 
-          {/* 04. PUJA SAMAGRI */}
+          {/* 04. YANTRAS */}
+          <div className="rounded-xl border border-vedic-gold/20 bg-white overflow-hidden">
+            <button
+              onClick={() => toggleSection('yantra')}
+              className="w-full p-3 flex items-center justify-between text-xs font-bold text-vedic-dark uppercase bg-vedic-ivory/50"
+            >
+              <span>YANTRAS</span>
+              <ChevronDown
+                className={`w-4 h-4 text-vedic-gold transition-transform ${
+                  openSection === 'yantra' ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+            {openSection === 'yantra' && (
+              <div className="p-3 space-y-1.5 border-t border-vedic-beige text-xs font-medium text-vedic-charcoal">
+                <Link to="/yantra" onClick={onClose} className="block py-1 font-semibold text-vedic-maroon">All Yantras</Link>
+                {YANTRA_TYPES.map((type) => (
+                  <Link key={type.slug} to={`/yantra?type=${type.slug}`} onClick={onClose} className="block py-1 pl-3 border-l-2 border-vedic-gold/30">
+                    {type.name}
+                  </Link>
+                ))}
+                <Link to="/yantra#yantra-energization" onClick={onClose} className="block py-1 text-vedic-goldDark font-bold">Puja & Energization Services →</Link>
+              </div>
+            )}
+          </div>
+
+          {/* 05. PUJA SAMAGRI */}
           <div className="rounded-xl border border-vedic-gold/20 bg-white overflow-hidden">
             <button
               onClick={() => toggleSection('puja')}

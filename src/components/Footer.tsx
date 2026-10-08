@@ -39,6 +39,7 @@ export const Footer: React.FC = () => {
             <li><Link to="/collections/rudraksha" className="hover:text-vedic-gold transition-colors">Nepali Rudraksha</Link></li>
             <li><Link to="/collections/bracelets" className="hover:text-vedic-gold transition-colors">Crystal Bracelets</Link></li>
             <li><Link to="/puja-kits" className="hover:text-vedic-gold transition-colors">Puja Kits</Link></li>
+            <li><Link to="/yantra" className="hover:text-vedic-gold transition-colors">Sacred Yantras</Link></li>
             <li><Link to="/collections/sawan-special-collection" className="hover:text-vedic-gold transition-colors">Sawan Special Collection</Link></li>
             <li><Link to="/collections/sawan-special-puja" className="hover:text-vedic-gold transition-colors">Online Puja & Pandit Services</Link></li>
           </ul>

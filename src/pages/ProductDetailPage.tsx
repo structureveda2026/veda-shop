@@ -27,6 +27,8 @@ import { ProductReviewsSection } from '../components/ProductReviewsSection';
 import { FindMyGemstoneModal } from '../components/FindMyGemstoneModal';
 import { FindMyProductModal } from '../components/FindMyProductModal';
 import { PUJA_KIT_META } from '../data/pujaKitData';
+import { YANTRA_META } from '../data/yantraData';
+import { getMaterialName, getYantraTypeName } from '../services/yantraCatalogService';
 import {
   Star, ShieldCheck, Truck, Heart, ArrowRight, CheckCircle2,
   Sparkles, Share2, Info, HelpCircle, Phone, FileText, Lock, Compass, BookOpen, Package, Users
@@ -80,6 +82,12 @@ export const ProductDetailPage: React.FC = () => {
   // Kit contents & facts (Shopify: custom.kit_contents / kit_deity / kit_serves metafields — see data/pujaKitData.ts).
   const kitMeta = useMemo(() => PUJA_KIT_META.find((m) => m.slug === baseProduct.slug), [baseProduct.slug]);
   const kitContents = kitMeta?.contents ?? [];
+
+  // Yantras are not stones or puja kits: no carat, cut, treatment or lab report. They get yantra facts (deity, material,
+  // size, direction, day, mantra), placement & worship wording and an energization note.
+  // Shopify: custom.yantra_* metafields — see services/yantraCatalogService.ts.
+  const isYantra = baseProduct.category === 'yantra';
+  const yantraMeta = useMemo(() => YANTRA_META.find((m) => m.slug === baseProduct.slug), [baseProduct.slug]);
 
   // Purchase options — with Shopify they are the product's own options and variants, so the price shown is the
   // very price Shopify charges. Until Shopify is connected a demo set is used. If Shopify is on but has nothing
@@ -198,7 +206,30 @@ export const ProductDetailPage: React.FC = () => {
   ).slice(0, 4);
 
   // Guidance box. Gemstone / Rudraksha: "Is this … right for you?" (Finder + WhatsApp). Puja kit: which kit / vidhi help.
-  const guidanceBox = isPujaKit ? (
+  const guidanceBox = isYantra ? (
+    <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 space-y-2">
+      <h4 className="font-serif font-bold text-xs text-amber-900 flex items-center gap-1.5">
+        <Compass className="w-4 h-4 text-vedic-gold" /> Not sure which yantra, or where to place it?
+      </h4>
+      <p className="text-[11px] text-amber-900 leading-snug">
+        Tell us your purpose and we'll help you choose — a pandit can also energize your yantra before it ships.
+      </p>
+      <div className="flex items-center justify-between gap-3 pt-1 text-xs">
+        <Link to="/yantra#yantra-finder" className="font-bold text-vedic-maroon hover:underline">
+          FIND MY YANTRA →
+        </Link>
+        <a
+          href={whatsappChatUrl('this yantra')}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 font-bold text-[#25D366] hover:underline"
+        >
+          <WhatsAppIcon className="w-4 h-4" />
+          ASK A PANDIT ON WHATSAPP
+        </a>
+      </div>
+    </div>
+  ) : isPujaKit ? (
     <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 space-y-2">
       <h4 className="font-serif font-bold text-xs text-amber-900 flex items-center gap-1.5">
         <Compass className="w-4 h-4 text-vedic-gold" /> Not sure which kit suits your puja?
@@ -264,7 +295,7 @@ export const ProductDetailPage: React.FC = () => {
       {isRudraksha ? (
         <FindMyProductModal isOpen={isFinderOpen} onClose={() => setIsFinderOpen(false)} />
       ) : (
-        !isPujaKit && <FindMyGemstoneModal isOpen={isFinderOpen} onClose={() => setIsFinderOpen(false)} />
+        !isPujaKit && !isYantra && <FindMyGemstoneModal isOpen={isFinderOpen} onClose={() => setIsFinderOpen(false)} />
       )}
 
       {/* Breadcrumb */}
@@ -396,8 +427,22 @@ export const ProductDetailPage: React.FC = () => {
             </div>
           )}
 
+          {/* Yantra facts — dedicated deity, material, size. (No stone attributes on a yantra.) */}
+          {isYantra && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {[yantraMeta?.deity, getMaterialName(yantraMeta?.material ?? '', product.material ?? ''), yantraMeta?.size || product.dimensions].filter(Boolean).map((chip) => (
+                <span key={chip as string} className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
+                  {chip}
+                </span>
+              ))}
+              <span className="px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-full text-xs font-bold">
+                Energization on Request
+              </span>
+            </div>
+          )}
+
           {/* Stone attribute chips — gemstones only; Rudraksha has its options under the buy buttons instead. */}
-          {!isRudraksha && !isPujaKit && (
+          {!isRudraksha && !isPujaKit && !isYantra && (
             <div className="flex flex-wrap gap-2 pt-1">
               <span className="px-3 py-1 bg-vedic-ivory border border-vedic-gold/30 rounded-full text-xs font-bold text-vedic-brown">
                 Natural Mined
@@ -445,7 +490,7 @@ export const ProductDetailPage: React.FC = () => {
           */}
 
           {/* Gemstones keep the guidance box here; on Rudraksha pages it sits at the very bottom of the card. */}
-          {!isRudraksha && !isPujaKit && guidanceBox}
+          {!isRudraksha && !isPujaKit && !isYantra && guidanceBox}
 
           {/* Rudraksha purchase options: Type (Only Bead / Silver Pendant), X-Ray Tested, Lab Certificate, Quantity. */}
           {purchase && (
@@ -469,7 +514,28 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Rudraksha: benefits of this particular Rudraksha, shown as icons.
               Stones: the Treatment Disclosure box. */}
-          {isPujaKit ? (
+          {isYantra ? (
+            <div className="space-y-4">
+              {yantraMeta?.mantra && (
+                <div className="bg-vedic-ivory p-3 rounded-xl border border-vedic-gold/25 space-y-1">
+                  <h4 className="text-xs font-bold text-vedic-dark uppercase tracking-wider">Mantra</h4>
+                  <p className="text-xs md:text-sm text-vedic-charcoal italic leading-relaxed">&ldquo;{yantraMeta.mantra}&rdquo;</p>
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { Icon: Compass, label: 'Placement & worship guide' },
+                  { Icon: Package, label: 'Padded, secure packaging' },
+                  { Icon: Users, label: 'Pandit energization on request' },
+                ].map(({ Icon, label }) => (
+                  <div key={label} className="flex flex-col items-center text-center gap-1.5 p-2.5 rounded-xl bg-vedic-ivory border border-vedic-gold/20">
+                    <Icon className="w-5 h-5 text-vedic-maroon" strokeWidth={1.75} />
+                    <span className="text-[10px] font-semibold leading-tight text-vedic-dark">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : isPujaKit ? (
             <div className="space-y-4">
               {kitContents.length > 0 && (
                 <div className="space-y-2">
@@ -539,7 +605,7 @@ export const ProductDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {(isRudraksha || isPujaKit) && guidanceBox}
+          {(isRudraksha || isPujaKit || isYantra) && guidanceBox}
         </div>
       </div>
 
@@ -547,9 +613,9 @@ export const ProductDetailPage: React.FC = () => {
       <div className="bg-white rounded-3xl p-6 md:p-8 border border-vedic-gold/20 shadow-card space-y-6">
         <div className="flex border-b border-vedic-gold/20 space-x-6 overflow-x-auto no-scrollbar">
           {[
-            { key: 'about', label: isPujaKit ? 'Overview' : 'Overview & Traditional Association' },
-            { key: 'specifications', label: isPujaKit ? "What's Inside & Kit Details" : 'Gemological Specifications' },
-            { key: 'howToWear', label: isPujaKit ? 'How to Perform the Puja' : 'How to Wear & Energization' },
+            { key: 'about', label: isPujaKit || isYantra ? 'Overview' : 'Overview & Traditional Association' },
+            { key: 'specifications', label: isYantra ? 'Specifications' : isPujaKit ? "What's Inside & Kit Details" : 'Gemological Specifications' },
+            { key: 'howToWear', label: isYantra ? 'Placement & Worship' : isPujaKit ? 'How to Perform the Puja' : 'How to Wear & Energization' },
             { key: 'care', label: isPujaKit ? 'Storage & Freshness' : 'Care & Maintenance' },
             { key: 'reviews', label: `Reviews (${product.reviewCount})` },
           ].map((tab) => (
@@ -572,7 +638,14 @@ export const ProductDetailPage: React.FC = () => {
           <div className="space-y-4 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
             <h3 className="font-serif font-bold text-lg text-vedic-maroon">Product Overview</h3>
             <p>{product.description}</p>
-            {isPujaKit ? (
+            {isYantra ? (
+              <>
+                <h4 className="font-serif font-bold text-base text-vedic-brown pt-2">Traditional Association</h4>
+                <p className="bg-vedic-ivory p-4 rounded-2xl border border-vedic-gold/20 italic">
+                  "A yantra is a sacred geometric form, traditionally worshipped with its own mantra in the home or workplace. Devotees associate each yantra with the intentions of the deity it is dedicated to. It is a devotional object — not a medical, legal or financial remedy."
+                </p>
+              </>
+            ) : isPujaKit ? (
               <>
                 <h4 className="font-serif font-bold text-base text-vedic-brown pt-2">Why a complete kit</h4>
                 <p className="bg-vedic-ivory p-4 rounded-2xl border border-vedic-gold/20 italic">
@@ -591,8 +664,19 @@ export const ProductDetailPage: React.FC = () => {
         )}
 
         {activeTab === 'specifications' && (
-          <div className={isPujaKit ? 'space-y-5' : 'grid grid-cols-2 md:grid-cols-4 gap-4 text-xs'}>
-            {isPujaKit ? (
+          <div className={isPujaKit && !isYantra ? 'space-y-5' : 'grid grid-cols-2 md:grid-cols-4 gap-4 text-xs'}>
+            {isYantra ? (
+              <>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Yantra</span><strong>{getYantraTypeName(product.subcategory)}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Dedicated To</span><strong>{yantraMeta?.deity || '—'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Material</span><strong>{getMaterialName(yantraMeta?.material ?? '', product.material ?? '') || '—'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Size</span><strong>{yantraMeta?.size || product.dimensions || '—'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Weight</span><strong>{product.weight || '—'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Best Day to Begin</span><strong>{yantraMeta?.day || '—'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Direction</span><strong>{yantraMeta?.direction || '—'}</strong></div>
+                <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">In the Box</span><strong>{yantraMeta?.includes.join(', ') || 'Yantra, placement guide'}</strong></div>
+              </>
+            ) : isPujaKit ? (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                   <div className="p-3 bg-vedic-ivory rounded-xl border border-vedic-gold/20"><span className="text-vedic-muted block">Kit For</span><strong>{kitMeta?.deity || 'Puja'}</strong></div>
@@ -648,6 +732,19 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         )}
 
+        {activeTab === 'howToWear' && isYantra && (
+          <div className="space-y-3 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
+            <p><strong>Direction:</strong> {yantraMeta?.direction || 'The North-East or East of your puja space, or as advised by your pandit.'}</p>
+            <p><strong>Best day to begin:</strong> {yantraMeta?.day || 'An auspicious day, as advised by your pandit.'}</p>
+            <p><strong>Installation:</strong> Bathe and keep the space clean. Place the yantra on a clean, raised seat facing the right direction, light a diya and take a sankalp.</p>
+            {yantraMeta?.mantra && (
+              <p><strong>Mantra:</strong> <span className="italic">{yantraMeta.mantra}</span> — chant it after offering a diya and flowers.</p>
+            )}
+            <p><strong>Energization:</strong> {product.energizationNote || 'A pandit can energize your yantra (Pran Pratishtha) on request — contact us before ordering.'}</p>
+            <p className="text-[11px] text-vedic-muted">Practices vary by family and lineage — please confirm with your pandit if you follow a specific tradition.</p>
+          </div>
+        )}
+
         {activeTab === 'howToWear' && isPujaKit && (
           <div className="space-y-3 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
             <p><strong>Prepare:</strong> Bathe, wear clean clothes and clean the puja space. Keep the samagri from this kit and fresh items (flowers, fruit, milk) ready.</p>
@@ -657,7 +754,7 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'howToWear' && !isPujaKit && (
+        {activeTab === 'howToWear' && !isPujaKit && !isYantra && (
           <div className="space-y-3 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
             <p><strong>Metal:</strong> Gold, Silver, or Panchdhatu as per birth chart requirement.</p>
             <p><strong>Finger:</strong> Prescribed finger based on planet (e.g. Ring finger for Sun, Little finger for Mercury, Middle finger for Saturn).</p>
@@ -673,7 +770,16 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'care' && !isPujaKit && (
+        {activeTab === 'care' && isYantra && (
+          <div className="space-y-2 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
+            <p>• {product.careInstructions || 'Wipe gently with a soft dry cloth.'}</p>
+            <p>• Copper and brass naturally darken with time — this is normal and does not affect the yantra.</p>
+            <p>• Keep the yantra on a clean, raised surface in your puja space — not on the floor or near footwear.</p>
+            <p>• Avoid harsh chemicals, abrasive scrubbing and moisture.</p>
+          </div>
+        )}
+
+        {activeTab === 'care' && !isPujaKit && !isYantra && (
           <div className="space-y-2 text-xs md:text-sm text-vedic-charcoal leading-relaxed">
             <p>• Clean gently using warm soapy water and a soft cloth.</p>
             <p>• Avoid harsh chemicals, household cleaners, and extreme heat.</p>

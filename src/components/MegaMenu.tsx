@@ -8,6 +8,10 @@ import { CATEGORIES } from '../data/categories';
 // kit type added there shows up in this menu automatically. Each one opens /puja-kits filtered to that type.
 const PUJA_KIT_TYPES = CATEGORIES.find((c) => c.slug === 'puja-kits')?.subcategories ?? [];
 
+// Yantra types for the YANTRAS menu — read from the `yantra` category (data/categories.ts), so a new yantra type
+// added there shows up in this menu automatically. Each one opens /yantra filtered to that type.
+const YANTRA_TYPES = CATEGORIES.find((c) => c.slug === 'yantra')?.subcategories ?? [];
+
 export const MegaMenu: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
@@ -221,7 +225,7 @@ export const MegaMenu: React.FC = () => {
             onMouseLeave={() => setActiveMenu(null)}
           >
             <Link
-              to="/collections/yantra"
+              to="/yantra"
               className="flex items-center gap-1 hover:text-vedic-maroon transition-colors py-1 px-2.5 rounded-full hover:bg-white/60"
             >
               <span>YANTRAS</span>
@@ -229,15 +233,51 @@ export const MegaMenu: React.FC = () => {
             </Link>
 
             {activeMenu === 'yantras' && (
-              <div className="absolute right-1/4 top-full w-80 bg-white rounded-b-2xl shadow-2xl border border-vedic-gold/30 p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="text-[11px] font-bold text-vedic-goldDark uppercase tracking-widest mb-3 border-b border-vedic-beige pb-2">
-                  Explore Sacred Symbols & Traditions
+              <div className="absolute right-0 top-full w-[560px] bg-white rounded-b-2xl shadow-2xl border border-vedic-gold/30 p-5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="flex items-center justify-between border-b border-vedic-beige pb-2 mb-3">
+                  <span className="text-[11px] font-bold text-vedic-goldDark uppercase tracking-widest">
+                    Explore Sacred Symbols & Traditions
+                  </span>
+                  <Link
+                    to="/yantra"
+                    onClick={() => setActiveMenu(null)}
+                    className="text-[11px] font-bold text-vedic-maroon hover:underline"
+                  >
+                    Explore All Yantras →
+                  </Link>
                 </div>
-                <div className="space-y-1.5 text-xs normal-case font-medium">
-                  <Link to="/collections/yantra" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Deity Yantras</Link>
-                  <Link to="/collections/yantra" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Navgraha Yantras</Link>
-                  <Link to="/collections/yantra" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Vastu Yantras</Link>
-                  <Link to="/collections/yantra" className="block hover:text-vedic-maroon py-1 px-2 rounded hover:bg-vedic-ivory">Puja & Energization Services</Link>
+
+                <div className="grid grid-cols-[1fr_auto] gap-5">
+                  {/* Shop by yantra — one entry per yantra type, each opens /yantra filtered to it */}
+                  <div>
+                    <span className="text-[11px] font-bold text-vedic-maroon uppercase tracking-wider block mb-2">
+                      Shop by Yantra
+                    </span>
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-xs normal-case font-medium">
+                      {YANTRA_TYPES.map((type) => (
+                        <Link
+                          key={type.slug}
+                          to={`/yantra?type=${type.slug}`}
+                          onClick={() => setActiveMenu(null)}
+                          title={type.description}
+                          className="px-2 py-1.5 rounded border border-transparent hover:border-vedic-gold/30 hover:bg-vedic-ivory hover:text-vedic-maroon transition-colors"
+                        >
+                          {type.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Quick links */}
+                  <div className="w-44 bg-vedic-ivory p-3 rounded-xl border border-vedic-gold/20 text-xs normal-case font-medium flex flex-col gap-0.5">
+                    <span className="text-[11px] font-bold text-vedic-maroon uppercase tracking-wider block border-b border-vedic-gold/20 pb-1 mb-1.5">
+                      By Purpose
+                    </span>
+                    <Link to="/yantra?purpose=wealth" onClick={() => setActiveMenu(null)} className="block hover:text-vedic-maroon py-1">Wealth & Prosperity</Link>
+                    <Link to="/yantra?purpose=protection" onClick={() => setActiveMenu(null)} className="block hover:text-vedic-maroon py-1">Protection</Link>
+                    <Link to="/yantra?purpose=vastu" onClick={() => setActiveMenu(null)} className="block hover:text-vedic-maroon py-1">Home & Vastu</Link>
+                    <Link to="/yantra#yantra-energization" onClick={() => setActiveMenu(null)} className="block hover:text-vedic-maroon py-1 mt-1.5 pt-2 border-t border-vedic-gold/20">Puja & Energization Services</Link>
+                  </div>
                 </div>
               </div>
             )}
