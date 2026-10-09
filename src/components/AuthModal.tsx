@@ -19,7 +19,10 @@ export const AuthModal: React.FC = () => {
     authError,
     isSubmitting,
     clearAuthError,
+    shopifyAuth,
+    signInWithShopify,
   } = useAuth();
+  const [shopifyEmail, setShopifyEmail] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
   const [loginData, setLoginData] = useState({ email: '', password: '' });
@@ -91,6 +94,17 @@ export const AuthModal: React.FC = () => {
 
   const displayError = formError || authError;
 
+  const handleShopifySignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    const email = shopifyEmail.trim();
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+      setFormError('Please enter a valid email address.');
+      return;
+    }
+    await signInWithShopify({ loginHint: email || undefined });
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/65 backdrop-blur-sm" onClick={closeAuthModal} />
@@ -109,10 +123,12 @@ export const AuthModal: React.FC = () => {
             <Sparkles className="w-6 h-6 text-vedic-dark" />
           </div>
           <h2 className="font-serif font-extrabold text-xl text-vedic-ivory">
-            {authModalTab === 'login' ? 'Welcome Back' : 'Join Veda Structure'}
+            {shopifyAuth ? 'Sign In or Join' : authModalTab === 'login' ? 'Welcome Back' : 'Join Veda Structure'}
           </h2>
           <p className="text-xs text-vedic-gold/80 mt-1">
-            {authModalTab === 'login'
+            {shopifyAuth
+              ? 'One secure account for your cart, orders and returns'
+              : authModalTab === 'login'
               ? 'Sign in to continue your sacred journey'
               : 'Create your account to begin shopping'}
           </p>
@@ -125,6 +141,7 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
+        {!shopifyAuth && (
         <div className="flex mx-6 mt-4 bg-vedic-ivory rounded-full p-1 border border-vedic-gold/20">
           <button
             onClick={() => switchTab('login')}
@@ -143,6 +160,7 @@ export const AuthModal: React.FC = () => {
             Register
           </button>
         </div>
+        )}
 
         <div className="p-6">
           {displayError && (
@@ -151,7 +169,36 @@ export const AuthModal: React.FC = () => {
             </div>
           )}
 
-          {authModalTab === 'login' ? (
+          {shopifyAuth ? (
+            <form onSubmit={handleShopifySignIn} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-vedic-dark mb-1">Email Address</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-vedic-muted absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    value={shopifyEmail}
+                    onChange={(e) => setShopifyEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    className="w-full pl-9 pr-3 py-2.5 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-gold"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-vedic-maroon text-white py-3 rounded-full text-xs font-bold shadow-md hover:bg-vedic-maroonDark transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                Continue Securely
+              </button>
+              <p className="text-center text-[11px] text-vedic-muted leading-relaxed">
+                We'll email you a one-time code on our secure sign-in page — no password needed. New here? An account is
+                created automatically.
+              </p>
+            </form>
+          ) : authModalTab === 'login' ? (
             <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block font-bold text-vedic-dark mb-1">Email Address</label>

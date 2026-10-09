@@ -10,8 +10,27 @@ import {
   isShopifyEnabled,
   removeCartLines,
   resolveMerchandiseId,
+  updateCartBuyer,
+  updateCartDiscountCodes,
   updateCartLines,
+  CartBuyerInput,
 } from '../lib/shopify';
+import { hasPendingCheckout, markCheckoutStarted } from '../lib/checkoutSession';
+
+export interface UnavailableLine {
+  productId: string;
+  selectedSize?: string;
+  title: string;
+}
+
+export type BeginCheckoutResult =
+  | { ok: true; url: string }
+  | {
+      ok: false;
+      code: 'not_configured' | 'unavailable' | 'sync_failed' | 'coupon' | 'error';
+      message: string;
+      unavailable?: UnavailableLine[];
+    };
 
 interface CartContextType {
   cart: CartItem[];
@@ -41,6 +60,11 @@ interface CartContextType {
   dismissJustAdded: () => void;
   /** Shopify-hosted checkout for the synced cart — null until Shopify is enabled and the cart has synced. */
   checkoutUrl: string | null;
+  /**
+   * Hands the cart to Shopify checkout (payment + order creation happen there). Syncs the cart, checks every
+   * line is really buyable on Shopify, passes the buyer / address / coupon, then returns Shopify's checkout URL.
+   */
+  beginCheckout: (buyer: Omit<CartBuyerInput, 'customerAccessToken'>, options?: { acceptCouponIssue?: boolean }) => Promise<BeginCheckoutResult>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -62,7 +86,7 @@ const readStoredShopifyCartId = (): string | null => {
 };
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, openAuthModal } = useAuth();
+  const { isAuthenticated, openAuthModal, getAccessToken } = useAuth();
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('vedic_cart');
@@ -211,6 +235,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const runShopifySync = async () => {
     if (!isShopifyEnabled()) return;
+    // Visitor is out at Shopify checkout (or just back): CheckoutReturnWatcher decides what happened to the Shopify
+    // cart first — syncing now would re-create the cart of an order that was just placed.
+    if (hasPendingCheckout()) return;
     if (syncRunningRef.current) {
       syncQueuedRef.current = true; // picked up as soon as the running sync finishes
       return;
@@ -252,6 +279,73 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
     };
   }, []);
+
+  const beginCheckout: CartContextType['beginCheckout'] = async (buyer, options) => {
+    if (!isShopifyEnabled()) {
+      return { ok: false, code: 'not_configured', message: 'Online payment is not enabled for this store yet.' };
+    }
+    try {
+      // 1) Make Shopify's cart match the local one right now (no waiting for the debounce).
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+        syncTimerRef.current = null;
+      }
+      await runShopifySync();
+      for (let i = 0; i < 100 && syncRunningRef.current; i++) await new Promise((r) => setTimeout(r, 100));
+
+      // 2) Every line must be a real, in-stock Shopify line in the requested quantity.
+      const wanted = new Map<string, number>();
+      const lineVariant = new Map<string, string | null>();
+      for (const item of cartRef.current) {
+        const variantId = await resolveMerchandiseId(item);
+        lineVariant.set(lineKey(item), variantId);
+        if (variantId) wanted.set(variantId, (wanted.get(variantId) ?? 0) + item.quantity);
+      }
+      const unavailable: UnavailableLine[] = [];
+      for (const item of cartRef.current) {
+        const variantId = lineVariant.get(lineKey(item));
+        const held = variantId ? remoteLinesRef.current.get(variantId)?.quantity ?? 0 : 0;
+        if (!variantId || held < (wanted.get(variantId) ?? 0)) {
+          unavailable.push({ productId: item.product.id, selectedSize: item.selectedSize, title: item.product.title });
+        }
+      }
+      if (unavailable.length) {
+        return {
+          ok: false,
+          code: 'unavailable',
+          message: 'Some items are sold out or not available for online purchase in the quantity you chose.',
+          unavailable,
+        };
+      }
+      const cartId = shopifyCartIdRef.current;
+      if (!cartId) {
+        return { ok: false, code: 'sync_failed', message: 'We could not reach the store to prepare your order. Please try again.' };
+      }
+
+      // 3) Buyer, address and coupon — Shopify validates all of it.
+      applyRemoteCart(await updateCartBuyer(cartId, { ...buyer, customerAccessToken: await getAccessToken() }));
+      const snapshot = await updateCartDiscountCodes(cartId, appliedCoupon ? [appliedCoupon] : []);
+      applyRemoteCart(snapshot);
+      const rejected = snapshot.discountCodes.find((d) => !d.applicable);
+      if (rejected && !options?.acceptCouponIssue) {
+        return {
+          ok: false,
+          code: 'coupon',
+          message: `The coupon ${rejected.code} isn't active on the store, so it won't reduce your total at payment.`,
+        };
+      }
+
+      markCheckoutStarted(cartId);
+      return { ok: true, url: snapshot.checkoutUrl };
+    } catch (err) {
+      console.warn('[Shopify] beginCheckout failed', err);
+      return {
+        ok: false,
+        code: 'error',
+        message: err instanceof ShopifyError && err.kind === 'user' ? err.message : 'Something went wrong while preparing your payment. Please try again.',
+      };
+    }
+  };
 
   const dismissJustAdded = () => {
     if (justAddedTimerRef.current) {
@@ -381,6 +475,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         justAdded,
         dismissJustAdded,
         checkoutUrl,
+        beginCheckout,
       }}
     >
       {children}

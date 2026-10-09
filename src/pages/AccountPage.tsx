@@ -32,7 +32,7 @@ const emptyAddressForm = {
 export const AccountPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses'>('profile');
   const { wishlistCount } = useWishlist();
-  const { isAuthenticated, user, orders, logout, updateProfile, addAddress, updateAddress, removeAddress, setDefaultAddress, openAuthModal } =
+  const { isAuthenticated, user, orders, logout, updateProfile, addAddress, updateAddress, removeAddress, setDefaultAddress, openAuthModal, shopifyAuth } =
     useAuth();
 
   // ---- Profile form state ----
@@ -157,14 +157,23 @@ export const AccountPage: React.FC = () => {
           >
             <User className="w-4 h-4 text-vedic-gold" /> Personal Profile
           </button>
-          <button
+          {shopifyAuth ? (
+            <Link
+              to="/account/orders"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-vedic-dark hover:bg-vedic-ivory"
+            >
+              <Package className="w-4 h-4 text-vedic-gold" /> My Orders
+            </Link>
+          ) : (
+            <button
             onClick={() => setActiveTab('orders')}
             className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors ${
               activeTab === 'orders' ? 'bg-vedic-maroon text-white' : 'text-vedic-dark hover:bg-vedic-ivory'
             }`}
           >
             <Package className="w-4 h-4 text-vedic-gold" /> My Orders History ({orders.length})
-          </button>
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('addresses')}
             className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors ${

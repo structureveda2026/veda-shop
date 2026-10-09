@@ -1,5 +1,6 @@
 import { AuthUser, Address } from '../types/auth';
 import { Order } from '../types/ecommerce';
+import type { CustomerProfile } from '../types/orders';
 
 /**
  * Registration / Login / Account "backend".
@@ -125,6 +126,38 @@ export const loginUser = async (input: { email: string; password: string }): Pro
   if (!user) throw new Error('No account found with this email. Please register first.');
   const passwordHash = await hashPassword(input.password);
   if (passwordHash !== user.passwordHash) throw new Error('Incorrect password. Please try again.');
+  try {
+    localStorage.setItem(SESSION_KEY, user.id);
+  } catch {
+    /* session just won't persist across reloads */
+  }
+  return toPublicUser(user);
+};
+
+/**
+ * Shopify Customer Account sign-in: the identity (id / name / email / phone) comes from Shopify; the
+ * profile + address book below keep working unchanged, stored per Shopify customer id. Addresses are only
+ * used to pre-fill checkout — Shopify keeps the address that was actually used on every order.
+ * (Swap point: Customer Account API `customerAddressCreate / Update / Delete` if you want the address book on Shopify too.)
+ */
+export const upsertShopifyUser = (profile: CustomerProfile): AuthUser => {
+  const users = readUsers();
+  const idx = users.findIndex((u) => u.id === profile.id);
+  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
+  const existing = idx >= 0 ? users[idx] : null;
+  const user: StoredUser = {
+    id: profile.id,
+    fullName: fullName || existing?.fullName || profile.email.split('@')[0],
+    email: profile.email.toLowerCase(),
+    phone: profile.phone || existing?.phone || '',
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    addresses: existing?.addresses || [],
+    passwordHash: '', // no password — Shopify authenticates this account
+  };
+  const next = [...users];
+  if (idx >= 0) next[idx] = user;
+  else next.push(user);
+  writeUsers(next);
   try {
     localStorage.setItem(SESSION_KEY, user.id);
   } catch {

@@ -29,6 +29,9 @@ const ENDPOINT = `https://${STORE_DOMAIN}/api/${API_VERSION}/graphql.json`;
 
 export const isShopifyEnabled = (): boolean => Boolean(STORE_DOMAIN && STOREFRONT_TOKEN);
 
+/** The store's domain exactly as configured (no protocol / trailing slash). */
+export const getStoreDomain = (): string => STORE_DOMAIN;
+
 /** 'user' = Shopify understood the request but refused it (e.g. the cart no longer exists). */
 export class ShopifyError extends Error {
   kind: 'request' | 'graphql' | 'user';
@@ -74,16 +77,24 @@ export interface ShopifyCartLine {
   variantId: string; // ProductVariant gid — what the local cart is matched on
 }
 
+export interface ShopifyDiscountCode {
+  code: string;
+  /** false = Shopify doesn't recognise the code (or it doesn't apply to this cart) — it will NOT be charged. */
+  applicable: boolean;
+}
+
 export interface ShopifyCartSnapshot {
   id: string;
   checkoutUrl: string;
   lines: ShopifyCartLine[];
+  discountCodes: ShopifyDiscountCode[];
 }
 
 interface RawCart {
   id: string;
   checkoutUrl: string;
   lines: { nodes: { id: string; quantity: number; merchandise?: { id?: string } }[] };
+  discountCodes?: { code: string; applicable: boolean }[];
 }
 
 interface CartPayload {
@@ -95,6 +106,7 @@ const CART_FIELDS = `
   fragment CartFields on Cart {
     id
     checkoutUrl
+    discountCodes { code applicable }
     lines(first: 100) {
       nodes {
         id
@@ -112,6 +124,7 @@ function toSnapshot(cart: RawCart): ShopifyCartSnapshot {
     lines: cart.lines.nodes
       .filter((n) => n.merchandise?.id)
       .map((n) => ({ id: n.id, quantity: n.quantity, variantId: n.merchandise!.id as string })),
+    discountCodes: cart.discountCodes ?? [],
   };
 }
 
@@ -183,6 +196,71 @@ export async function removeCartLines(cartId: string, lineIds: string[]) {
     { cartId, lineIds }
   );
   return unwrap(data.cartLinesRemove);
+}
+
+/**
+ * Hands the buyer over to Shopify checkout: who they are, where it ships, and which Shopify customer
+ * account the order belongs to (so it shows up in My Orders). Shopify collects payment and creates the order.
+ * `customerAccessToken` is the Customer Account API token — if Shopify rejects it the call is retried without it,
+ * so a token problem can never block a purchase (the order is still matched to the customer by email).
+ */
+export interface CartBuyerInput {
+  email: string;
+  phone?: string;
+  customerAccessToken?: string | null;
+  address?: {
+    firstName?: string;
+    lastName?: string;
+    address1: string;
+    address2?: string;
+    city: string;
+    province: string;
+    zip: string;
+    country: string;
+    phone?: string;
+  };
+}
+
+export async function updateCartBuyer(cartId: string, buyer: CartBuyerInput) {
+  const identity = (withToken: boolean) => ({
+    email: buyer.email,
+    phone: buyer.phone || undefined,
+    countryCode: BUYER_COUNTRY,
+    customerAccessToken: withToken && buyer.customerAccessToken ? buyer.customerAccessToken : undefined,
+    deliveryAddressPreferences: buyer.address ? [{ deliveryAddress: buyer.address }] : undefined,
+  });
+  const run = async (withToken: boolean) => {
+    const data = await storefront<{ cartBuyerIdentityUpdate: CartPayload }>(
+      `mutation CartBuyerIdentityUpdate($cartId: ID!, $buyerIdentity: CartBuyerIdentityInput!) {
+         cartBuyerIdentityUpdate(cartId: $cartId, buyerIdentity: $buyerIdentity) {
+           cart { ...CartFields }
+           userErrors { message }
+         }
+       } ${CART_FIELDS}`,
+      { cartId, buyerIdentity: identity(withToken) }
+    );
+    return unwrap(data.cartBuyerIdentityUpdate);
+  };
+  try {
+    return await run(true);
+  } catch (err) {
+    if (buyer.customerAccessToken && err instanceof ShopifyError) return run(false);
+    throw err;
+  }
+}
+
+/** Sends the shopper's coupon to Shopify as a discount code. Shopify (not the browser) decides if it's valid and what it takes off. */
+export async function updateCartDiscountCodes(cartId: string, codes: string[]) {
+  const data = await storefront<{ cartDiscountCodesUpdate: CartPayload }>(
+    `mutation CartDiscountCodesUpdate($cartId: ID!, $discountCodes: [String!]) {
+       cartDiscountCodesUpdate(cartId: $cartId, discountCodes: $discountCodes) {
+         cart { ...CartFields }
+         userErrors { message }
+       }
+     } ${CART_FIELDS}`,
+    { cartId, discountCodes: codes }
+  );
+  return unwrap(data.cartDiscountCodesUpdate);
 }
 
 // ---------------------------------------------------------------------------

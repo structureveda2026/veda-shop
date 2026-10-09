@@ -13,6 +13,7 @@ import { CartDrawer } from './components/CartDrawer';
 import { CartAddedToast } from './components/CartAddedToast';
 import { StickyBottomNav } from './components/StickyBottomNav';
 import { AuthModal } from './components/AuthModal';
+import { CheckoutReturnWatcher } from './components/CheckoutReturnWatcher';
 
 import { HomePage } from './pages/HomePage';
 import { RudrakshaPage } from './pages/RudrakshaPage';
@@ -38,6 +39,9 @@ import { BlogPage } from './pages/BlogPage';
 import { VideosPage } from './pages/VideosPage';
 import { FaqPage } from './pages/FaqPage';
 import { AccountPage } from './pages/AccountPage';
+import { OrdersPage } from './pages/OrdersPage';
+import { OrderDetailPage } from './pages/OrderDetailPage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { AuthenticityPage } from './pages/AuthenticityPage';
@@ -138,6 +142,9 @@ export const App: React.FC = () => {
 
                     {/* User Account */}
                     <Route path="/account" element={<AccountPage />} />
+                    <Route path="/account/orders" element={<OrdersPage />} />
+                    <Route path="/account/orders/:orderId" element={<OrderDetailPage />} />
+                    <Route path="/account/callback" element={<AuthCallbackPage />} />
 
                     {/* Brand & Support */}
                     <Route path="/about" element={<AboutPage />} />
@@ -155,6 +162,7 @@ export const App: React.FC = () => {
                 <Footer />
                 <CartDrawer />
                 <CartAddedToast />
+                <CheckoutReturnWatcher />
                 <StickyBottomNav />
                 <AuthModal />
               </div>

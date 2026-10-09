@@ -2,6 +2,17 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { AuthUser, Address } from '../types/auth';
 import { CartItem, Order } from '../types/ecommerce';
 import * as authService from '../services/authService';
+import {
+  AuthApiError,
+  clearTokens,
+  completeLogin,
+  fetchProfile,
+  getAccessToken,
+  hasStoredSession,
+  isCustomerAccountEnabled,
+  signOut,
+  startLogin,
+} from '../lib/customerAccount';
 
 interface PlaceOrderInput {
   items: CartItem[];
@@ -29,6 +40,15 @@ interface AuthContextType {
   setDefaultAddress: (addressId: string) => Promise<boolean>;
   placeOrder: (input: PlaceOrderInput) => Order;
   clearAuthError: () => void;
+  /** true when sign-in is handled by Shopify Customer Accounts (see lib/customerAccount.ts). */
+  shopifyAuth: boolean;
+  /** true while a remembered Shopify session is being re-checked after a page load. */
+  authLoading: boolean;
+  signInWithShopify: (options?: { returnTo?: string; loginHint?: string }) => Promise<void>;
+  /** Called by /account/callback — returns where to send the visitor next. */
+  completeShopifySignIn: (params: URLSearchParams) => Promise<string>;
+  /** The buyer's Shopify access token (refreshed when needed) — null when signed out. */
+  getAccessToken: () => Promise<string | null>;
   // Global login/register popup, triggered from anywhere (cart, wishlist, buy now, header…)
   isAuthModalOpen: boolean;
   authModalTab: 'login' | 'register';
@@ -42,8 +62,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const defaultDefaultAddress = (addresses: Address[]) => addresses.find((a) => a.isDefault) ?? addresses[0];
 
+const SHOPIFY_CUSTOMER_PREFIX = 'gid://shopify/Customer/';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(() => authService.getSession());
+  const shopifyAuth = isCustomerAccountEnabled();
+  const [authLoading, setAuthLoading] = useState<boolean>(() => shopifyAuth && hasStoredSession());
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const session = authService.getSession();
+    if (!shopifyAuth) return session;
+    // With Shopify sign-in only a Shopify customer counts — never a leftover local demo account.
+    return session && session.id.startsWith(SHOPIFY_CUSTOMER_PREFIX) && hasStoredSession() ? session : null;
+  });
   const [orders, setOrders] = useState<Order[]>(() => {
     const session = authService.getSession();
     return session ? authService.getUserOrders(session.id) : [];
@@ -58,6 +87,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     setOrders(user ? authService.getUserOrders(user.id) : []);
   }, [user]);
+
+  // Shopify sign-in: re-check the remembered session on every page load (refreshes the token, reloads the profile).
+  useEffect(() => {
+    if (!shopifyAuth) return;
+    if (!hasStoredSession()) {
+      setAuthLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const forget = () => {
+      clearTokens();
+      authService.logoutSession();
+      if (!cancelled) setUser(null);
+    };
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token) return forget();
+        const profile = await fetchProfile(token);
+        if (!cancelled) setUser(authService.upsertShopifyUser(profile));
+      } catch (e) {
+        // A rejected session ends it; a network hiccup keeps the cached account so the page still works.
+        if (e instanceof AuthApiError && e.status === 401) forget();
+      } finally {
+        if (!cancelled) setAuthLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const signInWithShopify: AuthContextType['signInWithShopify'] = async (options) => {
+    setIsSubmitting(true);
+    setAuthError(null);
+    try {
+      await startLogin(options); // navigates away to Shopify's sign-in page
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : 'Could not start sign-in. Please try again.');
+      setIsSubmitting(false);
+    }
+  };
+
+  const completeShopifySignIn: AuthContextType['completeShopifySignIn'] = async (params) => {
+    const { returnTo } = await completeLogin(params);
+    const token = await getAccessToken();
+    if (!token) throw new AuthApiError('Sign-in could not be completed. Please try again.', 401);
+    setUser(authService.upsertShopifyUser(await fetchProfile(token)));
+    setAuthLoading(false);
+    closeAuthModal();
+    return returnTo;
+  };
 
   const openAuthModal = useCallback((reason?: string, tab: 'login' | 'register' = 'login') => {
     setAuthError(null);
@@ -110,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     authService.logoutSession();
     setUser(null);
     setOrders([]);
+    if (shopifyAuth) void signOut(); // also ends the session on Shopify
   };
 
   const updateProfile: AuthContextType['updateProfile'] = async (updates) => {
@@ -212,6 +295,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setDefaultAddress,
         placeOrder,
         clearAuthError,
+        shopifyAuth,
+        authLoading,
+        signInWithShopify,
+        completeShopifySignIn,
+        getAccessToken,
         isAuthModalOpen,
         authModalTab,
         authModalReason,
