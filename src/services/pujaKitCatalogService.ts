@@ -1,6 +1,8 @@
-import { MOCK_PRODUCTS } from '../data/products';
+import { MOCK_PRODUCTS, registerRuntimeProducts } from '../data/products';
 import { CATEGORIES } from '../data/categories';
-import { PUJA_KIT_META, type PujaKitMeta } from '../data/pujaKitData';
+import { PUJA_KIT_META, registerPujaKitMeta, kitArt, type PujaKitMeta } from '../data/pujaKitData';
+import { resolveKitImages } from '../data/pujaKitImages';
+import { fetchCollectionProducts, isShopifyEnabled, type ShopifyCollectionProduct } from '../lib/shopify';
 import type { Product } from '../types/ecommerce';
 
 /**
@@ -206,41 +208,129 @@ function localKits(): PujaKitView[] {
   }));
 }
 
+// ---------------------------------------------------------------------------
+// Shopify → storefront mapping
+// ---------------------------------------------------------------------------
+export const PUJA_KIT_COLLECTION_HANDLE = 'puja-kits';
+
+/** Product metafields (namespace `custom`, "Storefront access" ON). All optional — see data/pujaKitData.ts. */
+const KIT_METAFIELD_KEYS = ['kit_type', 'kit_contents', 'kit_deity', 'kit_occasions', 'kit_purposes', 'kit_serves', 'kit_weight'];
+
+const slugifyKit = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+function parseKitList(raw?: string): string[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map((v) => String(v).trim()).filter(Boolean);
+  } catch {
+    /* not JSON — plain text list */
+  }
+  return raw.split(/[\n,]/).map((v) => v.trim()).filter(Boolean);
+}
+
+function resolveKitType(explicit: string | undefined, haystack: string, tags: string[]): string {
+  const subs = pujaKitCategory()?.subcategories ?? [];
+  const slugs = new Set(subs.map((s) => s.slug));
+  if (explicit && slugs.has(slugifyKit(explicit))) return slugifyKit(explicit);
+  const tagMatch = tags.map(slugifyKit).find((t) => slugs.has(t));
+  if (tagMatch) return tagMatch;
+  const candidates = subs
+    .map((s) => ({ slug: s.slug, key: s.name.toLowerCase().replace(/\s*(puja\s*)?kit$/, '').replace(/\s*shanti$/, '').trim() }))
+    .filter((c) => c.key)
+    .sort((a, b) => b.key.length - a.key.length);
+  return candidates.find((c) => haystack.includes(c.key))?.slug ?? '';
+}
+
+function shortenKit(text: string, max = 150): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max - 1);
+  return `${cut.slice(0, cut.lastIndexOf(' ') > 40 ? cut.lastIndexOf(' ') : cut.length)}…`;
+}
+
+function mapShopifyKit(node: ShopifyCollectionProduct): PujaKitView {
+  const mf = node.metafields;
+  const lowerTags = node.tags.map((t) => t.toLowerCase());
+  const haystack = [node.title, node.productType, ...lowerTags].join(' ').toLowerCase();
+  const subcategory = resolveKitType(mf.kit_type, haystack, node.tags);
+  const description = node.description || `${node.title} — a complete puja kit from Veda Store.`;
+
+  const derived = deriveMeta({ slug: node.handle, title: node.title, subcategory: subcategory || undefined, tags: lowerTags } as Product);
+  const occasions = parseKitList(mf.kit_occasions).map(slugifyKit).filter((id) => OCCASIONS.some((o) => o.id === id));
+  const meta: PujaKitMeta = {
+    slug: node.handle,
+    deity: mf.kit_deity || derived.deity,
+    occasions: occasions.length > 0 ? occasions : derived.occasions,
+    purposes: parseKitList(mf.kit_purposes).map(slugifyKit),
+    contents: parseKitList(mf.kit_contents),
+    serves: mf.kit_serves || ''
+  };
+
+  const product: Product = {
+    // The variant gid as the product id: the cart then adds exactly this variant, with no extra lookup.
+    id: node.variantId,
+    title: node.title,
+    slug: node.handle,
+    category: 'puja-kits',
+    subcategory: subcategory || undefined,
+    description,
+    shortDescription: shortenKit(description),
+    images: resolveKitImages(node.handle, kitArt('saffron'), node.images),
+    price: node.price,
+    compareAtPrice: node.compareAtPrice,
+    discount: node.discountPercent,
+    // Shopify holds no reviews — a reviews app can fill these in later. 0 simply hides the stars on the cards.
+    rating: 0,
+    reviewCount: 0,
+    sku: node.sku,
+    stock: node.availableForSale ? 40 : 0,
+    sizes: ['Standard Kit'],
+    material: 'Pure puja samagri, packed & sealed',
+    weight: mf.kit_weight,
+    tags: ['puja kit', 'puja samagri', ...node.tags],
+    benefits: [
+      'Complete samagri in one box — no last-minute shopping',
+      'Step-by-step vidhi guide included',
+      'Carefully selected, sealed for freshness',
+      'Suitable for home puja'
+    ],
+    careInstructions:
+      'Store unused samagri in a cool, dry place. Keep dhoop, camphor and incense sealed after opening.',
+    shippingInformation: 'Ships across India in secure, moisture-safe packaging.',
+    returnInformation: 'Please refer to our Returns & Refund policy for eligibility of puja samagri items.',
+    labCertified: false,
+    isBestseller: lowerTags.includes('bestseller'),
+    isNewArrival: lowerTags.includes('new') || lowerTags.includes('new arrival')
+  };
+
+  return { product, meta, typeName: typeNameFor(subcategory) };
+}
+
 /**
- * DATA SOURCE — this is the ONLY function that needs to change when Shopify is connected.
- *
- * Replace the body with a Storefront API call, e.g. (lib/shopify.ts already exports `storefront()`):
- *
- *   const data = await storefront<PujaKitsQuery>(`
- *     query PujaKits {
- *       collection(handle: "puja-kits") {
- *         products(first: 50) { nodes {
- *           id handle title description tags productType availableForSale
- *           featuredImage { url } images(first: 4) { nodes { url } }
- *           priceRange { minVariantPrice { amount } }
- *           compareAtPriceRange { minVariantPrice { amount } }
- *           kitContents: metafield(namespace: "custom", key: "kit_contents") { value }
- *           kitOccasions: metafield(namespace: "custom", key: "kit_occasions") { value }
- *           kitPurposes: metafield(namespace: "custom", key: "kit_purposes") { value }
- *           kitDeity: metafield(namespace: "custom", key: "kit_deity") { value }
- *           kitServes: metafield(namespace: "custom", key: "kit_serves") { value }
- *         } }
- *       }
- *     }`);
- *   return data.collection.products.nodes.map(mapShopifyProductToPujaKit);   // → PujaKitView
- *
- * Images: build `product.images` with `resolveKitImages(node.handle, kitArt('saffron'), node.images.nodes.map((n) => n.url))`
- * (data/pujaKitImages.ts + kitArt from data/pujaKitData.ts) — Shopify photos win, the themed art stays as the fallback.
- * Until then every kit's photo comes from the /public folder (data/pujaKitImages.ts).
- *
- * `product.subcategory` must equal one of the puja-kits subcategory slugs (use a `custom.kit_type` metafield
- * or a tag) — that single value is what drives the type tiles and finder chips.
- * Any Shopify hiccup returns [] and the page shows its friendly "coming soon" state instead of crashing.
+ * THE DATA SOURCE. Demo catalog until Shopify is connected, then the Shopify `puja-kits` collection
+ * (handle = PUJA_KIT_COLLECTION_HANDLE). Shopify is then the single source of truth: title, photos, price /
+ * compare-at price, discount and stock. Product handle = slug everywhere in this project, so links keep working.
+ * Never throws — any failure returns [] and the page shows its friendly "coming soon" state.
  */
 export async function getPujaKits(): Promise<PujaKitView[]> {
+  if (!isShopifyEnabled()) {
+    try {
+      return localKits();
+    } catch {
+      return [];
+    }
+  }
+
   try {
-    return localKits();
-  } catch {
+    const nodes = await fetchCollectionProducts(PUJA_KIT_COLLECTION_HANDLE, KIT_METAFIELD_KEYS);
+    const views = nodes.map(mapShopifyKit);
+    // Let the product page, wishlist and "You may also like" find these kits by slug, like the demo ones.
+    registerRuntimeProducts(views.map((v) => v.product), 'puja-kits');
+    registerPujaKitMeta(views.map((v) => v.meta));
+    return views;
+  } catch (error) {
+    console.warn('[PujaKits] Could not load the puja-kits collection from Shopify', error);
     return [];
   }
 }

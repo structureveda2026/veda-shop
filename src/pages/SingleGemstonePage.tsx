@@ -303,6 +303,8 @@ export const SingleGemstonePage: React.FC = () => {
   const buildVarietyCartProduct = (product: VarietyProductTile) =>
     ({
       id: `${product.id}-${gem.availableWeights[0].carat}ct`,
+      // Real Shopify listing: the handle lets the cart sell exactly this product.
+      ...(product.productHandle ? { slug: product.productHandle } : {}),
       title: `${product.title} (${gem.availableWeights[0].label})`,
       subtitle: gem.hindiName || gem.category,
       price: product.price,

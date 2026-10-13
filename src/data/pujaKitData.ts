@@ -302,3 +302,12 @@ export const PUJA_KIT_META: PujaKitMeta[] = [
     serves: 'Personal use'
   }
 ];
+
+/** Called by the catalog service when kits come from Shopify, so the product page can read their "what's inside" too. */
+export function registerPujaKitMeta(list: PujaKitMeta[]): void {
+  for (const meta of list) {
+    const i = PUJA_KIT_META.findIndex((m) => m.slug === meta.slug);
+    if (i >= 0) PUJA_KIT_META[i] = meta;
+    else PUJA_KIT_META.push(meta);
+  }
+}

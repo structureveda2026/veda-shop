@@ -261,6 +261,8 @@ export const GemstoneListingDetailPage: React.FC = () => {
 
   const cartPayload = {
     id: `${product.id}-${selectedWeight?.carat || 1}ct-${fitting}-${metal}-${selectedDesign}-${certification}-${energization}`,
+    // Real Shopify listing: the handle lets the cart sell exactly this product.
+    ...(product.productHandle ? { slug: product.productHandle } : {}),
     title: `${baseName}${tier ? ` — ${tier}` : ''}${selectedWeight ? ` (${selectedWeight.label})` : ''}`,
     subtitle: gem.hindiName || gem.category,
     price: finalPrice,

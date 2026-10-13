@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Gem } from 'lucide-react';
-import { ComingSoonSection, HomeSection } from './HomeSection';
+import { HomeSection } from './HomeSection';
 import type { SectionTone } from './HomeSection';
 import { HomeCta } from './HomeCta';
 import { track } from '../../lib/analytics';
@@ -16,15 +16,13 @@ interface HomeEditorialProps {
 
 /**
  * One big editorial band: a premium image beside a short story and one or two buttons.
- * Used for Rudraksha and Bracelets — and for any category that later goes live. While the
- * entry's status is "coming soon" it collapses to just the heading + a "Coming Soon" note.
+ * Used for Rudraksha, Gemstones, Bracelets, Yantra, Puja Kits and the Puja / Kashi bands.
+ * A band the admin marked "hidden" in Shopify renders nothing.
  */
 export const HomeEditorial: React.FC<HomeEditorialProps> = ({ id, content, tone = 'ivory', imageRight = false }) => {
   const [imageFailed, setImageFailed] = useState(false);
 
-  if (content.status === 'coming_soon') {
-    return <ComingSoonSection id={id} tone={tone} content={content} />;
-  }
+  if (content.status === 'hidden') return null;
 
   return (
     <HomeSection id={id} tone={tone}>

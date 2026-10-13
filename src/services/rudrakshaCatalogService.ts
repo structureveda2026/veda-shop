@@ -1,5 +1,8 @@
 import { RUDRAKSHA_MUKHI_LIST } from '../data/rudrakshaData';
-import { RudrakshaMukhi } from '../types/ecommerce';
+import { MOCK_PRODUCTS } from '../data/products';
+import { isShopifyEnabled } from '../lib/shopify';
+import { Product, RudrakshaMukhi } from '../types/ecommerce';
+import { isRemoteProduct } from './shopifyCatalogService';
 
 /**
  * Normalized shape every card in the "Explore Rudraksha by Mukhi" grid
@@ -133,8 +136,54 @@ function mapMukhiToTile(mukhi: RudrakshaMukhi, mukhiNumber: number): RudrakshaMu
  * grid only ever renders what's actually returned.
  * ---------------------------------------------------------------------
  */
+/** Rudraksha products that came from Shopify (loaded into the shared product list by shopifyCatalogService). */
+function shopifyRudraksha(): Product[] {
+  if (!isShopifyEnabled()) return [];
+  return MOCK_PRODUCTS.filter((p) => p.category === 'rudraksha' && isRemoteProduct(p));
+}
+
+const mukhiNumberOf = (product: Product): number | null => {
+  const match = (product.mukhi ?? product.title).match(/(\d{1,2})\s*mukhi/i);
+  return match ? parseInt(match[1], 10) : null;
+};
+
+/** One tile per Mukhi number that has a Shopify product (the cheapest one, in-stock first). */
+function tilesFromShopify(products: Product[]): RudrakshaMukhiTile[] {
+  const byNumber = new Map<number, Product[]>();
+  products.forEach((p) => {
+    const n = mukhiNumberOf(p);
+    if (n !== null) byNumber.set(n, [...(byNumber.get(n) ?? []), p]);
+  });
+
+  return Array.from(byNumber.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([mukhiNumber, list]) => {
+      const product = [...list].sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0) || a.price - b.price)[0];
+      const info = getNumberedMukhiEntries().find((e) => e.mukhiNumber === mukhiNumber)?.mukhi;
+      return {
+        id: product.slug,
+        slug: product.slug,
+        mukhiNumber,
+        name: product.title,
+        shortDescription: product.shortDescription || info?.description || '',
+        image: product.images[0] || info?.imageUrl || '',
+        startingPrice: product.price,
+        compareAtPrice: product.compareAtPrice,
+        discountPercent: product.discount,
+        rating: product.rating,
+        reviewCount: product.reviewCount,
+        inStock: product.stock > 0,
+        rulingGod: info?.rulingGod ?? '',
+        rulingPlanet: info?.rulingPlanet ?? ''
+      };
+    });
+}
+
 async function fetchRudrakshaMukhiTilesFromSource(): Promise<RudrakshaMukhiTile[]> {
-  // Demo/local data for now (RUDRAKSHA_MUKHI_LIST in src/data/rudrakshaData.ts).
+  // Shopify connected: the numbered products of the `rudraksha` collection.
+  const remote = shopifyRudraksha();
+  if (remote.length > 0) return tilesFromShopify(remote);
+  // Otherwise demo/local data (RUDRAKSHA_MUKHI_LIST in src/data/rudrakshaData.ts).
   return getNumberedMukhiEntries().map(({ mukhi, mukhiNumber }) => mapMukhiToTile(mukhi, mukhiNumber));
 }
 
@@ -216,7 +265,22 @@ const SPECIAL_GRID_LIMIT = 4;
  * ---------------------------------------------------------------------
  */
 async function fetchRudrakshaSpecialTilesFromSource(): Promise<RudrakshaSpecialTile[]> {
-  // Demo/local data for now (the non-numbered entries in RUDRAKSHA_MUKHI_LIST).
+  // Shopify connected: the non-numbered products of the `rudraksha` collection (Gauri Shankar, Ganesh, …).
+  const remote = shopifyRudraksha();
+  if (remote.length > 0) {
+    return remote
+      .filter((p) => mukhiNumberOf(p) === null)
+      .map((p) => ({
+        id: p.slug,
+        slug: p.slug,
+        name: p.title,
+        shortDescription: p.shortDescription,
+        image: p.images[0] || '',
+        startingPrice: p.price,
+        rulingGod: getSpecialMukhiEntries().find((m) => slugify(m.mukhi) === p.slug)?.rulingGod ?? ''
+      }));
+  }
+  // Otherwise demo/local data (the non-numbered entries in RUDRAKSHA_MUKHI_LIST).
   return getSpecialMukhiEntries().map(mapSpecialToTile);
 }
 

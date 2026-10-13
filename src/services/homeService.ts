@@ -1,5 +1,5 @@
 import { isShopifyEnabled, storefront } from '../lib/shopify';
-import { MOCK_PRODUCTS } from '../data/products';
+import { MOCK_PRODUCTS, registerRuntimeProducts } from '../data/products';
 import { PURPOSE_LIST } from '../data/purposeData';
 import { RASHI_LIST } from '../data/rashiData';
 import type { CategorySlug, Product } from '../types/ecommerce';
@@ -25,14 +25,15 @@ import type { RashiTile } from './rashiService';
 // Public shapes — components only ever see these, never a Shopify response
 // ---------------------------------------------------------------------------
 
-export type SectionStatus = 'live' | 'coming_soon';
+/** 'hidden' = the admin switched the band / tile off in Shopify. There is no "Coming Soon" state any more. */
+export type SectionStatus = 'live' | 'hidden';
 
 export type SectionKey =
   | 'hero' | 'categories' | 'finder' | 'bestsellers' | 'rudraksha' | 'gemstones' | 'bracelets'
-  | 'rashi' | 'purpose' | 'services' | 'kashi' | 'why' | 'video' | 'learn' | 'reviews'
+  | 'yantra' | 'puja-kits' | 'rashi' | 'purpose' | 'services' | 'kashi' | 'why' | 'video' | 'learn' | 'reviews'
   | 'social' | 'newsletter' | 'final';
 
-/** Copy + settings for one band of the page. `status: 'coming_soon'` swaps the band for a "Coming Soon" note. */
+/** Copy + settings for one band of the page. `status: 'hidden'` removes the band from the page. */
 export interface SectionContent {
   eyebrow?: string;
   title: string;
@@ -87,7 +88,7 @@ export interface HomeContent {
   trust: TrustItem[];
   categories: HomeCategory[];
   finder: FinderOption[];
-  /** "Most Loved" — already limited to live categories (Rudraksha + Bracelets today). */
+  /** "Most Loved" — a balanced mix from every live category (Rudraksha, Gemstones, Bracelets, Yantra, Puja Kits). */
   products: Product[];
   rashi: RashiTile[];
   purposes: PurposeTile[];
@@ -105,6 +106,17 @@ export interface HomeContent {
 /** Shopify collection that feeds "Most Loved". Falls back to the store-wide BEST_SELLING list. */
 const BESTSELLERS_COLLECTION_HANDLE = 'bestsellers';
 const MOST_LOVED_LIMIT = 8;
+
+/**
+ * One Shopify collection per category page (same handles the category pages use). Products fetched from
+ * a collection are tagged with that category, so "Most Loved" always has a share of every category and the
+ * band images can fall back to a real product photo. A handle that doesn't exist in the store is skipped.
+ */
+const CATEGORY_COLLECTIONS: { alias: 'cGemstones' | 'cYantra' | 'cPujaKits'; handle: string; category: CategorySlug }[] = [
+  { alias: 'cGemstones', handle: 'gemstones', category: 'gemstones' },
+  { alias: 'cYantra', handle: 'yantra', category: 'yantra' },
+  { alias: 'cPujaKits', handle: 'puja-kits', category: 'puja-kits' },
+];
 
 /**
  * Metaobject definitions the admin creates once (Settings → Custom data → Metaobjects, with
@@ -152,9 +164,10 @@ function parseList(value?: string): string[] | undefined {
   return parts.length ? parts : undefined;
 }
 
+/** Only an explicit "hidden" / "draft" hides something. Old "coming soon" values from Shopify now simply mean live. */
 const normalizeStatus = (value?: string): SectionStatus | undefined => {
   if (!value) return undefined;
-  return /coming|soon|hidden|draft/i.test(value) ? 'coming_soon' : 'live';
+  return /hidden|hide|draft|off/i.test(value) ? 'hidden' : 'live';
 };
 
 // ---------------------------------------------------------------------------
@@ -249,19 +262,11 @@ const demoImage = (predicate: (p: Product) => boolean): string | undefined => de
 const DEMO_IMAGES = {
   rudraksha: demoImage((p) => p.slug === '5-mukhi-rudraksha') ?? demoImage((p) => p.category === 'rudraksha'),
   bracelets: demoImage((p) => p.category === 'bracelets'),
+  gemstones: demoImage((p) => p.category === 'gemstones'),
+  yantra: demoImage((p) => p.category === 'yantra'),
+  pujaKits: demoImage((p) => p.category === 'puja-kits'),
+  pujaSamagri: demoImage((p) => p.category === 'puja-samagri') ?? demoImage((p) => p.category === 'puja-kits'),
   hero: '/images/home/hero-banner.jpg',
-};
-
-/**
- * "Coming soon" banner images for the three bands below (Gemstones, Puja & Spiritual Services,
- * Kashi). Drop the file into `public/images/home/coming-soon/` and paste its path here — the band
- * then shows this image full-width instead of the plain "Coming Soon" text. Leave a value as
- * `undefined` to keep the current text-only look for that band.
- */
-const COMING_SOON_BANNERS: Record<'gemstones' | 'services' | 'kashi', string | undefined> = {
-  gemstones: '/images/home/coming-soon/Gemstone.png',
-  services: '/images/home/coming-soon/Puja & Spiritual.png', 
-  kashi: '/images/home/coming-soon/Kashi.png',
 };
 
 const interleave = <T,>(a: T[], b: T[]): T[] => {
@@ -277,9 +282,7 @@ function demoMostLoved(liveKeys: Set<string>): Product[] {
   const score = (p: Product) => (p.isBestseller ? 100000 : 0) + p.reviewCount * p.rating;
   const ranked = (key: string) =>
     MOCK_PRODUCTS.filter((p) => p.category === key).sort((a, b) => score(b) - score(a));
-  const lists = Array.from(liveKeys).map(ranked);
-  const merged = lists.reduce<Product[]>((acc, list) => interleave(acc, list), []);
-  return merged.slice(0, MOST_LOVED_LIMIT);
+  return balanceByCategory(Array.from(liveKeys).flatMap(ranked), MOST_LOVED_LIMIT);
 }
 
 const DEMO_REVIEWS: HomeReview[] = [
@@ -287,6 +290,8 @@ const DEMO_REVIEWS: HomeReview[] = [
   { id: 'demo-r2', name: 'Priya Patel', rating: 5, verified: true, product: 'Red Carnelian Bracelet', comment: 'The bracelet is stunning in person. Fast delivery across India and pristine packaging.' },
   { id: 'demo-r3', name: 'Rohan Deshmukh', rating: 5, verified: true, product: 'Gauri Shankar Rudraksha', comment: 'Bought it for our home mandir. The product page explained everything clearly and the bead arrived exactly as described.' },
   { id: 'demo-r4', name: 'Meera Nair', rating: 4, verified: true, product: '5 Mukhi Rudraksha Mala', comment: 'Good quality beads for daily japa. Delivery took a couple of days longer than expected, but the product is lovely.' },
+  { id: 'demo-r5', name: 'Kavita Joshi', rating: 5, verified: true, product: 'Natural Ceylon Ruby (Manik)', comment: 'Certificate came with the stone and the team guided me on which gemstone suits my rashi. Very happy.' },
+  { id: 'demo-r6', name: 'Suresh Iyer', rating: 5, verified: true, product: 'Shree Yantra', comment: 'Beautifully engraved and well packed. It now sits in our puja room.' },
 ];
 
 function demoVideos(): HomeVideo[] {
@@ -299,13 +304,17 @@ function demoVideos(): HomeVideo[] {
     pick('Bracelet styling', bracelets[0]),
     pick('How to wear Rudraksha', rudraksha[6]),
     pick('Product unboxing', bracelets[2]),
+    pick('Gemstone certificate walkthrough', MOCK_PRODUCTS.find((p) => p.category === 'gemstones')),
+    pick('Yantra placement guide', MOCK_PRODUCTS.find((p) => p.category === 'yantra')),
   ].filter((v): v is HomeVideo => v !== null);
 }
 
 function demoSocial(): SocialTile[] {
-  const rudraksha = MOCK_PRODUCTS.filter((p) => p.category === 'rudraksha');
-  const bracelets = MOCK_PRODUCTS.filter((p) => p.category === 'bracelets');
-  return interleave(rudraksha.slice(0, 3), bracelets.slice(0, 3)).map((p, i) => ({
+  const of = (category: string) => MOCK_PRODUCTS.filter((p) => p.category === category);
+  const mixed = [of('rudraksha'), of('gemstones'), of('bracelets'), of('yantra'), of('puja-kits')]
+    .map((list) => list.slice(0, 2))
+    .reduce<Product[]>((acc, list) => interleave(acc, list), []);
+  return mixed.slice(0, 6).map((p, i) => ({
     id: `demo-social-${i}`,
     image: p.images[0],
     alt: p.title,
@@ -326,7 +335,7 @@ const DEFAULT_SECTIONS: Record<SectionKey, SectionContent> = {
   hero: section({
     eyebrow: 'A modern Vedic lifestyle store',
     title: 'Ancient Wisdom. Thoughtfully Crafted for Today.',
-    description: 'Discover Rudraksha, spiritual bracelets and Vedic essentials selected for your Vedic journey.',
+    description: 'Discover Rudraksha, gemstones, spiritual bracelets, Yantra and Puja kits selected for your Vedic journey.',
     image: DEMO_IMAGES.hero,
     ctaLabel: 'Shop Collection',
     ctaHref: '/shop',
@@ -358,15 +367,13 @@ const DEFAULT_SECTIONS: Record<SectionKey, SectionContent> = {
     secondaryHref: '#find-your-product',
     highlights: ['1–14 Mukhi', 'Malas', 'Bracelets', 'Special Rudraksha'],
   }),
-  // Coming soon for now. Flip `status` to "live" on the entry in Shopify (and add an image) and the
-  // band below appears with this copy — no code change.
   gemstones: section({
     eyebrow: 'Gemstones',
     title: 'Discover Your Gemstone',
     description:
       'Explore Vedic gemstones and natural stones with detailed product information and expert guidance.',
-    image: COMING_SOON_BANNERS.gemstones,
-    status: 'coming_soon',
+    image: DEMO_IMAGES.gemstones,
+    highlights: ['Navratna', 'Zodiac Stones', 'Certified', 'Custom Jewellery'],
     ctaLabel: 'Explore Gemstones',
     ctaHref: '/gemstones',
     secondaryLabel: 'Gemstone Recommendation',
@@ -381,6 +388,28 @@ const DEFAULT_SECTIONS: Record<SectionKey, SectionContent> = {
     ctaLabel: 'Shop Bracelets',
     ctaHref: '/collections/bracelets',
     highlights: ['Rudraksha', 'Gemstone', 'Crystal'],
+  }),
+  yantra: section({
+    eyebrow: 'Yantra',
+    title: 'Sacred Yantras for Your Space',
+    description:
+      'Traditional copper, gold-plated and silver Yantras — Shree, Kuber, Mahamrityunjay and more — with placement guidance.',
+    image: DEMO_IMAGES.yantra,
+    ctaLabel: 'Shop Yantra',
+    ctaHref: '/yantra',
+    highlights: ['Shree', 'Kuber', 'Mahamrityunjay', 'Navgraha', 'Vastu'],
+  }),
+  'puja-kits': section({
+    eyebrow: 'Puja Kits',
+    title: 'Complete Puja Kits, Ready to Use',
+    description:
+      'Everything for the ritual in one box — Rudrabhishek, Lakshmi, Ganesh, Satyanarayan, Griha Pravesh and daily puja kits.',
+    image: DEMO_IMAGES.pujaKits,
+    ctaLabel: 'Shop Puja Kits',
+    ctaHref: '/puja-kits',
+    secondaryLabel: 'Puja Guide',
+    secondaryHref: '/guides/puja',
+    highlights: ['Rudrabhishek', 'Lakshmi', 'Ganesh', 'Daily Puja'],
   }),
   rashi: section({
     eyebrow: 'By Rashi',
@@ -397,11 +426,12 @@ const DEFAULT_SECTIONS: Record<SectionKey, SectionContent> = {
   services: section({
     eyebrow: 'Puja & Spiritual Services',
     title: 'More Than a Store',
-    description: 'Traditional Vedic services performed from Kashi, booked online.',
-    image: COMING_SOON_BANNERS.services,
-    status: 'coming_soon',
-    ctaLabel: 'Explore Vedic Services',
-    ctaHref: '/collections/sawan-special-puja',
+    description: 'Traditional Vedic services performed from Kashi — talk to us and we will arrange them for you.',
+    image: DEMO_IMAGES.pujaKits,
+    ctaLabel: 'Explore Puja Kits',
+    ctaHref: '/puja-kits',
+    secondaryLabel: 'Book a Puja Enquiry',
+    secondaryHref: '/contact?subject=Puja%20%26%20Yagya%20Enquiry',
     highlights: ['Online Puja', 'Yagya', 'Homa / Havan', 'Japa', 'Path'],
   }),
   kashi: section({
@@ -409,10 +439,12 @@ const DEFAULT_SECTIONS: Record<SectionKey, SectionContent> = {
     title: 'From Kashi, With Devotion',
     description:
       'Connect with traditional Vedic practices through our services and spiritual offerings from Kashi.',
-    image: COMING_SOON_BANNERS.kashi,
-    status: 'coming_soon',
-    ctaLabel: 'Explore Kashi Services',
-    ctaHref: '/collections/sawan-special-puja',
+    image: DEMO_IMAGES.pujaSamagri,
+    ctaLabel: 'Shop Puja Samagri',
+    ctaHref: '/collections/puja-samagri',
+    secondaryLabel: 'Read the Puja Guide',
+    secondaryHref: '/guides/puja',
+    highlights: ['Kashi Gangajal', 'Incense', 'Ghee Wicks'],
   }),
   why: section({ eyebrow: 'Our Promise', title: 'Why Veda Store?' }),
   video: section({
@@ -458,25 +490,22 @@ const DEFAULT_TRUST: TrustItem[] = [
 ];
 
 /**
- * "Coming soon" thumbnail images for the category tiles below (Gemstones, Yantra, Puja Samagri,
- * Puja & Yagya). Drop the file into `public/images/home/categories/` and paste its path here — the
- * tile then shows this image (with a blurred caption at the bottom) instead of the plain "Coming
- * Soon" placeholder. Leave a value as `undefined` to keep the placeholder for that category.
+ * Optional thumbnail images for category tiles whose Shopify entry has no image. Drop the file into
+ * `public/images/home/categories/` and paste its path here. A tile with no image falls back to a
+ * real product photo from that category (see withProductImages), then to a plain icon.
  */
-const CATEGORY_IMAGES: Record<'gemstones' | 'yantra' | 'puja-samagri' | 'puja-yagya', string | undefined> = {
+const CATEGORY_IMAGES: Partial<Record<string, string>> = {
   gemstones: '/images/home/categories/Gemstone.png',
   yantra: '/images/home/categories/Yantra.png',
-  'puja-samagri': undefined,
-  'puja-yagya': undefined,
 };
 
 const DEFAULT_CATEGORIES: HomeCategory[] = [
   { id: 'rudraksha', key: 'rudraksha', title: 'Rudraksha', description: 'Authentic Rudraksha & sacred beads', image: DEMO_IMAGES.rudraksha, href: '/rudraksha', status: 'live' },
-  { id: 'gemstones', key: 'gemstones', title: 'Gemstones', description: 'Vedic & natural gemstone collection', image: CATEGORY_IMAGES.gemstones, href: '/gemstones', status: 'coming_soon' },
+  { id: 'gemstones', key: 'gemstones', title: 'Gemstones', description: 'Vedic & natural gemstone collection', image: CATEGORY_IMAGES.gemstones ?? DEMO_IMAGES.gemstones, href: '/gemstones', status: 'live' },
   { id: 'bracelets', key: 'bracelets', title: 'Bracelets', description: 'Rudraksha, gemstone & crystal bracelets', image: DEMO_IMAGES.bracelets, href: '/collections/bracelets', status: 'live' },
-  { id: 'yantra', key: 'yantra', title: 'Yantra', description: 'Traditional sacred Yantras', image: CATEGORY_IMAGES.yantra, href: '/yantra', status: 'live' },
-  { id: 'puja-samagri', key: 'puja-samagri', title: 'Puja Samagri', description: 'Essential products for your rituals', image: CATEGORY_IMAGES['puja-samagri'], href: '/collections/puja-samagri', status: 'coming_soon' },
-  { id: 'puja-yagya', key: 'puja-yagya', title: 'Puja & Yagya', description: 'Online Vedic services', image: CATEGORY_IMAGES['puja-yagya'], href: '/collections/sawan-special-puja', status: 'coming_soon' },
+  { id: 'yantra', key: 'yantra', title: 'Yantra', description: 'Traditional sacred Yantras', image: CATEGORY_IMAGES.yantra ?? DEMO_IMAGES.yantra, href: '/yantra', status: 'live' },
+  { id: 'puja-kits', key: 'puja-kits', title: 'Puja Kits', description: 'Complete kits for your rituals', image: DEMO_IMAGES.pujaKits, href: '/puja-kits', status: 'live' },
+  { id: 'puja-yagya', key: 'puja-yagya', title: 'Puja & Yagya', description: 'Puja guidance & Vedic services', image: DEMO_IMAGES.pujaKits, href: '/guides/puja', status: 'live' },
 ];
 
 const DEFAULT_FINDER: FinderOption[] = [
@@ -578,6 +607,9 @@ function categoryOf(productType: string, tags: string[]): CategorySlug {
   const hay = [type, ...tags.map(slugify)];
   if (hay.some((t) => t.startsWith('rudraksha'))) return 'rudraksha';
   if (hay.some((t) => t.startsWith('bracelet'))) return 'bracelets';
+  if (hay.some((t) => t.startsWith('yantra'))) return 'yantra';
+  if (hay.some((t) => t.startsWith('puja-kit') || t === 'puja-kits')) return 'puja-kits';
+  if (hay.some((t) => t.startsWith('gemstone') || t === 'gemstones')) return 'gemstones';
   return (type || 'spiritual-essentials') as CategorySlug;
 }
 
@@ -593,7 +625,7 @@ function readRating(raw?: { value: string } | null): number {
   return toNumber(raw.value);
 }
 
-function mapProduct(raw: RawProduct): Product {
+function mapProduct(raw: RawProduct, forcedCategory?: CategorySlug): Product {
   const tags = (raw.tags ?? []).map((t) => t.toLowerCase());
   const price = toNumber(raw.priceRange.minVariantPrice.amount);
   const compare = toNumber(raw.compareAtPriceRange.minVariantPrice.amount);
@@ -606,7 +638,7 @@ function mapProduct(raw: RawProduct): Product {
     id: raw.id,
     title: raw.title,
     slug: raw.handle, // the Shopify handle — cards link to /products/:handle
-    category: categoryOf(raw.productType, tags),
+    category: forcedCategory ?? categoryOf(raw.productType, tags),
     description,
     shortDescription: description.slice(0, 140),
     images,
@@ -651,7 +683,7 @@ function mapSections(entries: Entry[]): Record<SectionKey, SectionContent> {
 
 function mapCategories(entries: Entry[]): HomeCategory[] {
   if (!entries.length) return DEFAULT_CATEGORIES;
-  return entries.map((e) => {
+  const fromShopify = entries.map((e) => {
     const title = e.str('title', 'name') ?? e.handle;
     const collection = e.ref('collection');
     const key = slugify(e.str('key') ?? collection?.handle ?? title);
@@ -666,6 +698,10 @@ function mapCategories(entries: Entry[]): HomeCategory[] {
       status: normalizeStatus(e.str('status')) ?? 'live',
     };
   });
+  // Gemstones, Yantra and Puja Kits always have a tile, even if their entry hasn't been created in Shopify yet.
+  // (Mark an entry "hidden" in Shopify to remove its tile.)
+  const missing = DEFAULT_CATEGORIES.filter((d) => !fromShopify.some((c) => c.key === d.key || c.id === d.id));
+  return [...fromShopify, ...missing];
 }
 
 function mapList<T>(entries: Entry[], fallback: T[], map: (e: Entry) => T | null): T[] {
@@ -705,17 +741,65 @@ function mapPurposes(entries: Entry[]): PurposeTile[] {
   });
 }
 
+const dedupe = (list: Product[]): Product[] => {
+  const seen = new Set<string>();
+  return list.filter((p) => (seen.has(p.slug) ? false : (seen.add(p.slug), true)));
+};
+
+/** Round-robin across categories (in the order they first appear) so no single category fills the band. */
+function balanceByCategory(list: Product[], limit: number): Product[] {
+  const groups = new Map<string, Product[]>();
+  list.forEach((p) => groups.set(p.category, [...(groups.get(p.category) ?? []), p]));
+  const queues = Array.from(groups.values());
+  const out: Product[] = [];
+  for (let i = 0; out.length < limit && queues.some((q) => i < q.length); i++) {
+    for (const q of queues) {
+      if (i < q.length && out.length < limit) out.push(q[i]);
+    }
+  }
+  return out;
+}
+
+/** A band with no image set in Shopify borrows a real product photo from its own category. */
+function withProductImages(sections: Record<SectionKey, SectionContent>, products: Product[]): Record<SectionKey, SectionContent> {
+  const source: Partial<Record<SectionKey, string>> = {
+    rudraksha: 'rudraksha',
+    gemstones: 'gemstones',
+    bracelets: 'bracelets',
+    yantra: 'yantra',
+    'puja-kits': 'puja-kits',
+    services: 'puja-kits',
+    kashi: 'puja-samagri',
+  };
+  const next = { ...sections };
+  (Object.keys(source) as SectionKey[]).forEach((key) => {
+    if (next[key].image) return;
+    const image = products.find((p) => p.category === source[key])?.images[0];
+    if (image) next[key] = { ...next[key], image };
+  });
+  return next;
+}
+
 function buildFromShopify(data: ShopifyHomeResponse): HomeContent {
-  const categories = mapCategories(readEntries(data.categories));
+  const categories = mapCategories(readEntries(data.categories)).map((c) => ({ ...c })).filter((c) => c.status === 'live');
   const liveKeys = new Set(categories.filter((c) => c.status === 'live').map((c) => c.key));
   const onlyLive = (list: Product[]) => list.filter((p) => liveKeys.has(p.category));
 
-  const fromCollection = onlyLive((data.collection?.products.nodes ?? []).map(mapProduct));
-  const fromStore = onlyLive((data.topProducts?.nodes ?? []).map(mapProduct));
-  const products = (fromCollection.length ? fromCollection : fromStore).slice(0, MOST_LOVED_LIMIT);
+  // Bestsellers first (collection, else store-wide), then each category's own collection, de-duplicated.
+  const fromCollection = onlyLive((data.collection?.products.nodes ?? []).map((n) => mapProduct(n)));
+  const fromStore = onlyLive((data.topProducts?.nodes ?? []).map((n) => mapProduct(n)));
+  const byCategory = CATEGORY_COLLECTIONS.map(({ alias, category }) =>
+    onlyLive((data[alias]?.products.nodes ?? []).map((n) => mapProduct(n, category)))
+  );
+  const pool = dedupe([...(fromCollection.length ? fromCollection : fromStore), ...byCategory.flat()]);
+  const products = balanceByCategory(pool, MOST_LOVED_LIMIT);
+  const sections = withProductImages(mapSections(readEntries(data.sections)), [...pool, ...fromStore]);
+  categories.forEach((c) => {
+    if (!c.image) c.image = pool.find((p) => p.category === c.key)?.images[0];
+  });
 
   return {
-    sections: mapSections(readEntries(data.sections)),
+    sections,
     trust: mapList(readEntries(data.trust), DEFAULT_TRUST, (e) => {
       const title = e.str('title');
       return title ? { id: e.handle, title, subtitle: e.str('subtitle', 'description'), icon: e.str('icon') ?? 'shield-check' } : null;
@@ -786,6 +870,9 @@ interface ShopifyHomeResponse {
   purposes?: RawMetaobjects;
   rashi?: RawMetaobjects;
   collection?: { products: { nodes: RawProduct[] } } | null;
+  cGemstones?: { products: { nodes: RawProduct[] } } | null;
+  cYantra?: { products: { nodes: RawProduct[] } } | null;
+  cPujaKits?: { products: { nodes: RawProduct[] } } | null;
   topProducts?: { nodes: RawProduct[] };
 }
 
@@ -837,6 +924,9 @@ const HOME_QUERY = `
     collection(handle: "${BESTSELLERS_COLLECTION_HANDLE}") {
       products(first: 24, sortKey: BEST_SELLING) { nodes { ...HomeProduct } }
     }
+    ${CATEGORY_COLLECTIONS.map(
+      ({ alias, handle }) => `${alias}: collection(handle: "${handle}") { products(first: 8, sortKey: BEST_SELLING) { nodes { ...HomeProduct } } }`
+    ).join('\n    ')}
     topProducts: products(first: 24, sortKey: BEST_SELLING) { nodes { ...HomeProduct } }
   }
 `;
@@ -869,6 +959,9 @@ export async function getHomeContent(): Promise<HomeContent> {
   try {
     const response = await storefront<ShopifyHomeResponse>(HOME_QUERY);
     const data = buildFromShopify(response);
+    // A Most Loved card links to /products/:handle — make sure the product page can find every one of them,
+    // even a bestseller that isn't in its category collection (never overwrites a richer copy already loaded).
+    registerRuntimeProducts(data.products.filter((p) => !MOCK_PRODUCTS.some((m) => m.slug === p.slug && m.id.startsWith('gid://shopify/'))));
     cache = { at: Date.now(), data };
     return data;
   } catch (error) {

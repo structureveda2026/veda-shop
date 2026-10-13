@@ -77,9 +77,9 @@ function useHomeSeo() {
  *
  * Section order follows the spec exactly (the announcement bar + header above and the footer below
  * are the site-wide ones). Every band reads from useHomeContent(): Shopify products + metaobjects
- * in production, local demo data until Shopify is connected. Rudraksha and Bracelets are live;
- * every other category / service band shows only its heading and "Coming Soon" until an admin
- * sets its status to "live" in Shopify — no code change needed.
+ * in production, local demo data until Shopify is connected. Rudraksha, Gemstones, Bracelets, Yantra,
+ * Puja Kits and the Puja / Kashi bands are all live; an admin can hide any band or category tile by
+ * setting its status to "hidden" in Shopify — no code change needed.
  */
 export const HomePage: React.FC = () => {
   const { content, loading } = useHomeContent();
@@ -99,8 +99,10 @@ export const HomePage: React.FC = () => {
       <HomeProductGrid content={s.bestsellers} products={content.products} loading={loading} />
 
       <HomeEditorial id="discover-rudraksha" content={s.rudraksha} tone="ivory" />
-      <HomeEditorial id="shop-bracelets" content={s.bracelets} tone="white" />
       <HomeEditorial id="discover-gemstones" content={s.gemstones} tone="sand" imageRight />
+      <HomeEditorial id="shop-bracelets" content={s.bracelets} tone="white" />
+      <HomeEditorial id="discover-yantra" content={s.yantra} tone="ivory" imageRight />
+      <HomeEditorial id="shop-puja-kits" content={s['puja-kits']} tone="sand" />
 
       <HomeRashiGrid content={s.rashi} rashi={content.rashi} />
       <HomePurposeGrid content={s.purpose} purposes={content.purposes} />

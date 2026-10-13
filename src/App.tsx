@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -6,6 +6,8 @@ import { WishlistProvider } from './context/WishlistContext';
 import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
 import { UnitProvider } from './context/UnitContext';
 import { rememberReturnPath } from './lib/returnPath';
+import { isShopifyEnabled } from './lib/shopify';
+import { loadShopifyCatalog } from './services/shopifyCatalogService';
 
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -74,8 +76,43 @@ const ReturnPathTracker = () => {
   return null;
 };
 
+/**
+ * With Shopify connected, the real catalog is loaded into the shared product list BEFORE the site renders, so every
+ * page (Shop, Search, Rudraksha, Bracelets, Gemstones, Puja Kits, product pages…) shows Shopify's products from the
+ * first paint. Without Shopify (demo mode) it renders immediately. If Shopify is slow, the site opens after 6 seconds
+ * with whatever has loaded; it never blocks forever.
+ */
+const CatalogGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [ready, setReady] = useState(!isShopifyEnabled());
+
+  useEffect(() => {
+    if (ready) return;
+    let active = true;
+    const finish = () => active && setReady(true);
+    const timer = window.setTimeout(finish, 6000);
+    loadShopifyCatalog().finally(() => {
+      window.clearTimeout(timer);
+      finish();
+    });
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [ready]);
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-vedic-ivory" role="status" aria-label="Loading store">
+        <div className="w-10 h-10 rounded-full border-2 border-vedic-gold/30 border-t-vedic-gold animate-spin" />
+      </div>
+    );
+  }
+  return <>{children}</>;
+};
+
 export const App: React.FC = () => {
   return (
+    <CatalogGate>
     <Router>
       <AuthProvider>
       <UnitProvider>
@@ -172,6 +209,7 @@ export const App: React.FC = () => {
       </UnitProvider>
       </AuthProvider>
     </Router>
+    </CatalogGate>
   );
 };
 

@@ -1,6 +1,5 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { SectionContent } from '../../services/homeService';
 
 /** Shared building blocks for every band of the home page. */
 
@@ -53,54 +52,6 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({ eyebrow, title, de
       </div>
       {action && !centered && <div className="shrink-0">{action}</div>}
     </div>
-  );
-};
-
-/** Just the "Coming Soon" note — nothing else is shown for a band that isn't live yet. */
-export const ComingSoonBox: React.FC = () => (
-  <div className="max-w-2xl mx-auto rounded-2xl border border-dashed border-vedic-gold/60 bg-white/70 px-6 py-9 text-center">
-    <p className="font-serif italic text-2xl text-vedic-goldDeep">Coming Soon</p>
-  </div>
-);
-
-/**
- * A whole band in its "coming soon" state.
- * Once `content.image` is set (see COMING_SOON_BANNERS in homeService.ts), the eyebrow + title
- * stay, and a full-bleed banner (edge-to-edge, breaking out of the page container) replaces the
- * "Coming Soon" note below them. The banner's top/bottom edges fade into the section background
- * instead of cutting off hard, so it blends with the page. Until an image is added, it falls back
- * to the plain heading + "Coming Soon" note so nothing looks broken.
- */
-export const ComingSoonSection: React.FC<{ id?: string; tone?: SectionTone; content: SectionContent }> = ({ id, tone = 'ivory', content }) => {
-  if (content.image) {
-    const fade =
-      'linear-gradient(to bottom, transparent 0, black 32px, black calc(100% - 32px), transparent 100%)';
-    return (
-      <HomeSection id={id} tone={tone} className="[&>div]:py-10 md:[&>div]:py-14">
-        <SectionHeader eyebrow={content.eyebrow} title={content.title} className="mb-8" />
-        {/* left-1/2 + -mx-[50vw] + w-screen breaks the image out of the max-w-7xl container so it
-            spans the full viewport width, regardless of how narrow or wide the page container is. */}
-        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">
-          <img
-            src={content.image}
-            alt={content.title}
-            width={1920}
-            height={640}
-            loading="lazy"
-            decoding="async"
-            className="block w-full h-auto md:h-[420px] md:object-cover"
-            style={{ WebkitMaskImage: fade, maskImage: fade }}
-          />
-        </div>
-      </HomeSection>
-    );
-  }
-
-  return (
-    <HomeSection id={id} tone={tone} className="[&>div]:py-12 md:[&>div]:py-14">
-      <SectionHeader eyebrow={content.eyebrow} title={content.title} className="mb-8" />
-      <ComingSoonBox />
-    </HomeSection>
   );
 };
 

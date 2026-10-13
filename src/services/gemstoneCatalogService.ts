@@ -1,4 +1,8 @@
 import { GEMSTONE_CATALOG_DATA, GemstoneItem } from '../data/gemstoneCatalogData';
+import { MOCK_PRODUCTS, registerRuntimeProducts } from '../data/products';
+import { fetchCollectionProducts, isShopifyEnabled } from '../lib/shopify';
+import type { Product } from '../types/ecommerce';
+import { isRemoteProduct } from './shopifyCatalogService';
 
 /**
  * Normalized shape every gemstone "tile" is rendered from on the
@@ -202,6 +206,8 @@ export interface VarietyProductTile {
   rating: number;
   reviewCount: number;
   inStock: boolean;
+  /** Set for real Shopify listings: the product's own handle, so the cart can sell exactly that product. */
+  productHandle?: string;
 }
 
 function hashHandle(text: string): number {
@@ -376,12 +382,92 @@ function buildVarietyProduct(
   };
 }
 
+const slugifyHandle = (text: string): string => text.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+function productToVarietyTile(product: Product, collectionHandle: string): VarietyProductTile {
+  return {
+    id: product.slug, // the Shopify handle — also what the listing page's URL carries
+    handle: collectionHandle,
+    title: product.title,
+    image: product.images[0] || '',
+    price: product.price,
+    compareAtPrice: product.compareAtPrice,
+    discountPercent: product.discount,
+    rating: product.rating,
+    reviewCount: product.reviewCount,
+    inStock: product.stock > 0,
+    productHandle: product.slug
+  };
+}
+
+/**
+ * Shopify listings for one variety. The variety's collection (handle = the variety's slug, e.g. `ceylon-blue-sapphire`
+ * or just `ruby`) wins; if it doesn't exist, any product of the `gemstones` collection tagged with that handle
+ * (or whose title / subcategory matches it) is shown instead — so the admin can use either collections or tags.
+ */
+async function fetchShopifyVarietyListings(collectionHandle: string): Promise<VarietyProductTile[]> {
+  try {
+    const nodes = await fetchCollectionProducts(collectionHandle, ['carat', 'ratti', 'origin', 'treatment', 'shape', 'certification_lab']);
+    if (nodes.length > 0) {
+      // Make sure the product page can find these by handle even if they aren't in the `gemstones` collection.
+      const missing: Product[] = nodes
+        .filter((n) => !MOCK_PRODUCTS.some((p) => p.slug === n.handle && isRemoteProduct(p)))
+        .map((n) => ({
+          id: n.variantId,
+          title: n.title,
+          slug: n.handle,
+          category: 'gemstones',
+          description: n.description || n.title,
+          shortDescription: (n.description || n.title).slice(0, 140),
+          images: n.images,
+          price: n.price,
+          compareAtPrice: n.compareAtPrice,
+          discount: n.discountPercent,
+          rating: 0,
+          reviewCount: 0,
+          sku: n.sku,
+          stock: n.availableForSale ? 20 : 0,
+          tags: ['gemstones', ...n.tags.map((t) => t.toLowerCase())],
+          benefits: []
+        }));
+      if (missing.length > 0) registerRuntimeProducts(missing);
+      return nodes.map((n) => ({
+        id: n.handle,
+        handle: collectionHandle,
+        title: n.title,
+        image: n.images[0] || '',
+        price: n.price,
+        compareAtPrice: n.compareAtPrice,
+        discountPercent: n.discountPercent,
+        rating: 0,
+        reviewCount: 0,
+        inStock: n.availableForSale,
+        productHandle: n.handle
+      }));
+    }
+  } catch {
+    /* fall through to the tag match below */
+  }
+
+  return MOCK_PRODUCTS.filter(
+    (p) =>
+      p.category === 'gemstones' &&
+      isRemoteProduct(p) &&
+      (p.tags.some((t) => slugifyHandle(t) === collectionHandle) ||
+        p.subcategory === collectionHandle ||
+        slugifyHandle(p.title).includes(collectionHandle))
+  ).map((p) => productToVarietyTile(p, collectionHandle));
+}
+
 async function fetchVarietyProductsFromSource(
   collectionHandle: string,
   fallbackTitle: string,
   fallbackImage: string,
   basePrice: number
 ): Promise<VarietyProductTile[]> {
+  // Shopify connected: the real listings for this variety (never demo cards next to real ones).
+  if (isShopifyEnabled()) return fetchShopifyVarietyListings(collectionHandle);
+
   // Demo/placeholder data for now: a handful of plausible listings per variety (so the page
   // looks like a real, well-stocked collection rather than one lonely card), all derived
   // deterministically from the handle so nothing reshuffles across re-renders — only the
@@ -429,7 +515,11 @@ export async function getVarietyProductById(
   basePrice: number
 ): Promise<VarietyProductTile | null> {
   const match = productId.match(/^(.*)-demo-(\d+)$/);
-  if (!match) return null;
+  if (!match) {
+    // A real Shopify listing: its id is the product handle.
+    const product = isShopifyEnabled() ? MOCK_PRODUCTS.find((p) => p.slug === productId && isRemoteProduct(p)) : undefined;
+    return product ? productToVarietyTile(product, product.subcategory ?? productId) : null;
+  }
   const [, collectionHandle, indexStr] = match;
   return buildVarietyProduct(collectionHandle, Number(indexStr), fallbackTitle, fallbackImage, basePrice);
 }
