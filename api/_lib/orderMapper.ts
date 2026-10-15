@@ -526,7 +526,7 @@ export function mapOrder(raw: RawOrder, opts: MapOptions): ShopifyOrder {
 
   const returns = mapReturns(raw);
   const head = headlineReturn(returns);
-  const cod = isCod(raw.paymentGatewayNames);
+  const cod = isCod(raw.paymentGatewayNames) || lower(raw.tags).includes('cod'); // COD orders from api/checkout.ts carry the `COD` tag
   const pay = paymentStatus(raw, cod);
   const paid = amount(raw.totalReceivedSet);
   const refund = mapRefund(raw, paid, returns);

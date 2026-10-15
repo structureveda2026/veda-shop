@@ -19,11 +19,12 @@ export const OrderSuccessPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { shopifyAuth, isAuthenticated, authLoading } = useAuth();
-  const state = (location.state || {}) as { orderId?: string; grandTotal?: number; fromCheckout?: boolean; since?: number };
+  const state = (location.state || {}) as { orderId?: string; grandTotal?: number; fromCheckout?: boolean; since?: number; cod?: boolean; orderName?: string };
 
   const live = Boolean(state.fromCheckout);
   const [order, setOrder] = useState<ShopifyOrder | null>(null);
   const [phase, setPhase] = useState<'loading' | 'found' | 'delayed'>(live ? 'loading' : 'found');
+  const isCod = Boolean(state.cod) || Boolean(order?.payment.cod);
 
   // Direct visits with nothing to show go to My Orders instead of faking a receipt.
   useEffect(() => {
@@ -76,7 +77,7 @@ export const OrderSuccessPage: React.FC = () => {
 
   if (!live && !state.orderId) return null;
 
-  const orderLabel = order?.name ?? state.orderId;
+  const orderLabel = order?.name ?? state.orderName ?? state.orderId;
   const trackTo = order ? `/account/orders/${order.id}` : live ? '/account/orders' : `/track-order?id=${state.orderId}`;
 
   return (
@@ -87,12 +88,14 @@ export const OrderSuccessPage: React.FC = () => {
 
       <div className="space-y-2">
         <span className="inline-flex items-center gap-1.5 text-xs font-bold text-vedic-gold bg-vedic-maroon px-3 py-1 rounded-full">
-          <Sparkles className="w-3.5 h-3.5" /> {phase === 'loading' ? 'Confirming your payment…' : 'Order Successfully Placed & Consecrated'}
+          <Sparkles className="w-3.5 h-3.5" /> {phase === 'loading' ? (isCod ? 'Placing your order…' : 'Confirming your payment…') : 'Order Successfully Placed & Consecrated'}
         </span>
         <h1 className="font-serif font-extrabold text-3xl md:text-4xl text-vedic-maroon">Thank You For Your Divine Purchase!</h1>
         <p className="text-xs text-vedic-muted">
           {phase === 'delayed'
-            ? "Your payment went through. Your order is still being registered — it will appear in My Orders in a moment."
+            ? isCod
+              ? 'Your Cash on Delivery order is placed. It is still being registered — it will appear in My Orders in a moment.'
+              : "Your payment went through. Your order is still being registered — it will appear in My Orders in a moment."
             : 'Your order has been registered and is being prepared for traditional Prana Pratishtha ritual before dispatch.'}
         </p>
       </div>
@@ -117,9 +120,12 @@ export const OrderSuccessPage: React.FC = () => {
                   <PaymentBadge order={order} />
                 </div>
                 <div className="flex justify-between text-sm font-extrabold text-vedic-maroon pt-2 border-t border-vedic-beige">
-                  <span>Order Total:</span>
+                  <span>{isCod ? 'Pay on Delivery:' : 'Order Total:'}</span>
                   <span>{formatMoney(order.total, order.currency)}</span>
                 </div>
+                {isCod && (
+                  <p className="text-[11px] text-vedic-muted pt-1">Please keep this amount ready for the delivery partner. We may call you to confirm the order.</p>
+                )}
               </>
             ) : phase === 'found' ? (
               <>
@@ -129,11 +135,11 @@ export const OrderSuccessPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-vedic-muted">Payment Status:</span>
-                  <span className="font-bold text-emerald-700">Confirmed (Secure)</span>
+                  <span className="font-bold text-emerald-700">{isCod ? 'Pay on Delivery' : 'Confirmed (Secure)'}</span>
                 </div>
                 {state.grandTotal != null && (
                   <div className="flex justify-between text-sm font-extrabold text-vedic-maroon pt-2 border-t border-vedic-beige">
-                    <span>Total Paid:</span>
+                    <span>{isCod ? 'Amount to Pay:' : 'Total Paid:'}</span>
                     <span>₹{state.grandTotal.toLocaleString('en-IN')}</span>
                   </div>
                 )}
