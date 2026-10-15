@@ -69,14 +69,6 @@ const writeOrdersStore = (store: OrdersStore) => {
   }
 };
 
-const hashPassword = async (password: string): Promise<string> => {
-  const bytes = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-};
-
 const genId = (prefix: string) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 const toPublicUser = (u: StoredUser): AuthUser => {
@@ -86,53 +78,8 @@ const toPublicUser = (u: StoredUser): AuthUser => {
 };
 
 // -----------------------------------------------------------------------------------
-// Registration / Login / Session
+// Session (sign-in itself is handled entirely by Shopify — see lib/customerAccount.ts)
 // -----------------------------------------------------------------------------------
-
-export const registerUser = async (input: {
-  fullName: string;
-  email: string;
-  phone: string;
-  password: string;
-}): Promise<AuthUser> => {
-  const email = input.email.trim().toLowerCase();
-  const users = readUsers();
-  if (users.some((u) => u.email === email)) {
-    throw new Error('An account with this email already exists. Please sign in instead.');
-  }
-  const passwordHash = await hashPassword(input.password);
-  const user: StoredUser = {
-    id: genId('usr'),
-    fullName: input.fullName.trim(),
-    email,
-    phone: input.phone.trim(),
-    createdAt: new Date().toISOString(),
-    addresses: [],
-    passwordHash,
-  };
-  writeUsers([...users, user]);
-  try {
-    localStorage.setItem(SESSION_KEY, user.id);
-  } catch {
-    /* session just won't persist across reloads */
-  }
-  return toPublicUser(user);
-};
-
-export const loginUser = async (input: { email: string; password: string }): Promise<AuthUser> => {
-  const email = input.email.trim().toLowerCase();
-  const users = readUsers();
-  const user = users.find((u) => u.email === email);
-  if (!user) throw new Error('No account found with this email. Please register first.');
-  const passwordHash = await hashPassword(input.password);
-  if (passwordHash !== user.passwordHash) throw new Error('Incorrect password. Please try again.');
-  try {
-    localStorage.setItem(SESSION_KEY, user.id);
-  } catch {
-    /* session just won't persist across reloads */
-  }
-  return toPublicUser(user);
-};
 
 /**
  * Shopify Customer Account sign-in: the identity (id / name / email / phone) comes from Shopify; the

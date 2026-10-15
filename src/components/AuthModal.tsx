@@ -1,11 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { X, Mail, Lock, User, Phone, Eye, EyeOff, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+import { X, Mail, User, Phone, Loader2, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { useAuth, savePendingSignup } from '../context/AuthContext';
 
 /**
- * Global Login / Register popup. Rendered once in App.tsx and opened from anywhere via
- * `useAuth().openAuthModal(reason)` — the cart, wishlist, Buy Now buttons and the Header's
- * Account icon all trigger the same instance instead of each owning their own modal.
+ * Background of the sign-in screen. Served from /public now; to switch it to a Shopify-hosted image later,
+ * set VITE_AUTH_BG_URL to the image URL (Shopify → Content → Files) — nothing else needs to change.
+ */
+const AUTH_BG: string = import.meta.env.VITE_AUTH_BG_URL || '/images/auth/auth-bg.jpg';
+
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+
+const inputCls =
+  'w-full pl-10 pr-3 py-3 bg-white/80 rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-maroon text-sm text-vedic-dark placeholder:text-vedic-muted';
+
+/**
+ * Global Login / Create-account popup (one form at a time). Rendered once in App.tsx and opened from anywhere via
+ * `useAuth().openAuthModal(reason, tab)`. Sign-in and account creation are fully handled by Shopify Customer
+ * Accounts: this form only collects the email, then Shopify emails a one-time code on its secure page.
  */
 export const AuthModal: React.FC = () => {
   const {
@@ -14,37 +26,38 @@ export const AuthModal: React.FC = () => {
     authModalReason,
     closeAuthModal,
     setAuthModalTab,
-    login,
-    register,
     authError,
     isSubmitting,
     clearAuthError,
     shopifyAuth,
     signInWithShopify,
   } = useAuth();
-  const [shopifyEmail, setShopifyEmail] = useState('');
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
-  const [registerData, setRegisterData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [agree, setAgree] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthModalOpen) {
       setFormError(null);
       clearAuthError();
-      setShowPassword(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthModalOpen, authModalTab]);
 
+  useEffect(() => {
+    if (!isAuthModalOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeAuthModal();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isAuthModalOpen, closeAuthModal]);
+
   if (!isAuthModalOpen) return null;
+
+  const isLogin = authModalTab === 'login';
+  const displayError = formError || authError;
 
   const switchTab = (tab: 'login' | 'register') => {
     setFormError(null);
@@ -52,292 +65,201 @@ export const AuthModal: React.FC = () => {
     setAuthModalTab(tab);
   };
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    if (!loginData.email.trim() || !loginData.password) {
-      setFormError('Please enter your email and password.');
-      return;
+    const mail = email.trim();
+    if (!EMAIL_RE.test(mail)) return setFormError('Please enter a valid email address.');
+    if (!isLogin) {
+      if (!fullName.trim()) return setFormError('Please enter your full name.');
+      if (phone.trim() && phone.replace(/\D/g, '').length !== 10) {
+        return setFormError('Please enter a valid 10-digit mobile number, or leave it empty.');
+      }
+      if (!agree) return setFormError('Please accept the Terms & Conditions and Privacy Policy.');
+      savePendingSignup({ email: mail, fullName: fullName.trim(), phone: phone.trim() });
     }
-    await login(loginData);
+    await signInWithShopify({ loginHint: mail });
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    const { fullName, email, phone, password, confirmPassword } = registerData;
-    if (!fullName.trim() || !email.trim() || !phone.trim() || !password) {
-      setFormError('Please fill in all fields.');
-      return;
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
-      setFormError('Please enter a valid email address.');
-      return;
-    }
-    if (phone.replace(/\D/g, '').length !== 10) {
-      setFormError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-    if (password.length < 6) {
-      setFormError('Password must be at least 6 characters.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setFormError('Passwords do not match.');
-      return;
-    }
-    const ok = await register({ fullName, email, phone, password });
-    if (ok) {
-      setRegisterData({ fullName: '', email: '', phone: '', password: '', confirmPassword: '' });
-    }
-  };
-
-  const displayError = formError || authError;
-
-  const handleShopifySignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    const email = shopifyEmail.trim();
-    if (email && !/^\S+@\S+\.\S+$/.test(email)) {
-      setFormError('Please enter a valid email address.');
-      return;
-    }
-    await signInWithShopify({ loginHint: email || undefined });
-  };
+  // Google / Apple / Facebook buttons live on Shopify's own sign-in page (turn them on in Shopify admin).
+  const moreOptions = () => signInWithShopify();
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/65 backdrop-blur-sm" onClick={closeAuthModal} />
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div
+        className="fixed inset-0 bg-cover bg-center scale-110 blur-[3px]"
+        style={{ backgroundImage: `url(${AUTH_BG})` }}
+        onClick={closeAuthModal}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 bg-black/40" onClick={closeAuthModal} aria-hidden="true" />
 
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden z-10 border border-vedic-gold/30 max-h-[92vh] overflow-y-auto">
-        <button
-          onClick={closeAuthModal}
-          className="absolute top-3 right-3 z-20 p-2 rounded-full bg-white/80 hover:bg-vedic-maroon hover:text-white transition-colors shadow-md"
-          aria-label="Close"
-        >
-          <X className="w-5 h-5" />
-        </button>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={isLogin ? 'Sign in' : 'Create account'}
+        className="relative z-10 w-full max-w-[400px] my-auto bg-vedic-ivory/95 rounded-3xl shadow-2xl border border-vedic-gold/30 px-5 sm:px-7 py-7 max-h-[94vh] overflow-y-auto"
+      >
+        {isLogin ? (
+          <button
+            onClick={closeAuthModal}
+            className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-vedic-maroon hover:text-white transition-colors shadow"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        ) : (
+          <button
+            onClick={() => switchTab('login')}
+            className="absolute top-3 left-3 p-2 rounded-full bg-white/80 hover:bg-vedic-maroon hover:text-white transition-colors shadow"
+            aria-label="Back to sign in"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
 
-        <div className="bg-vedic-brown px-6 pt-8 pb-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-gold-gradient flex items-center justify-center mx-auto mb-3 shadow-gold">
-            <Sparkles className="w-6 h-6 text-vedic-dark" />
-          </div>
-          <h2 className="font-serif font-extrabold text-xl text-vedic-ivory">
-            {shopifyAuth ? 'Sign In or Join' : authModalTab === 'login' ? 'Welcome Back' : 'Join Veda Structure'}
+        <div className="text-center">
+          <img src="/logo.png" alt="Veda Store" className="h-14 w-auto mx-auto object-contain" />
+          <h2 className="font-serif font-bold text-2xl sm:text-3xl text-vedic-maroonDark mt-3">
+            {isLogin ? 'Welcome Back' : 'Create Your Account'}
           </h2>
-          <p className="text-xs text-vedic-gold/80 mt-1">
-            {shopifyAuth
-              ? 'One secure account for your cart, orders and returns'
-              : authModalTab === 'login'
-              ? 'Sign in to continue your sacred journey'
-              : 'Create your account to begin shopping'}
+          <p className="text-xs sm:text-sm text-vedic-muted mt-1.5 leading-relaxed">
+            {isLogin
+              ? 'Sign in to continue your spiritual journey with Veda Store'
+              : 'Join Veda Store and be a part of a mindful, spiritual lifestyle.'}
           </p>
         </div>
 
         {authModalReason && (
-          <div className="mx-6 mt-4 flex items-start gap-2 bg-vedic-gold/10 border border-vedic-gold/30 rounded-xl px-3 py-2.5 text-[11px] text-vedic-maroon font-semibold">
+          <div className="mt-4 flex items-start gap-2 bg-vedic-gold/10 border border-vedic-gold/30 rounded-xl px-3 py-2 text-[11px] text-vedic-maroon font-semibold">
             <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-vedic-goldDark" />
             <span>{authModalReason}</span>
           </div>
         )}
 
-        {!shopifyAuth && (
-        <div className="flex mx-6 mt-4 bg-vedic-ivory rounded-full p-1 border border-vedic-gold/20">
-          <button
-            onClick={() => switchTab('login')}
-            className={`flex-1 py-2 rounded-full text-xs font-bold transition-colors ${
-              authModalTab === 'login' ? 'bg-vedic-maroon text-white shadow' : 'text-vedic-dark'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => switchTab('register')}
-            className={`flex-1 py-2 rounded-full text-xs font-bold transition-colors ${
-              authModalTab === 'register' ? 'bg-vedic-maroon text-white shadow' : 'text-vedic-dark'
-            }`}
-          >
-            Register
-          </button>
-        </div>
+        {displayError && (
+          <div className="mt-4 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+            {displayError}
+          </div>
         )}
 
-        <div className="p-6">
-          {displayError && (
-            <div className="mb-4 text-[11px] font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-              {displayError}
-            </div>
-          )}
-
-          {shopifyAuth ? (
-            <form onSubmit={handleShopifySignIn} className="space-y-4 text-xs">
+        {!shopifyAuth ? (
+          <p className="mt-5 text-xs text-center text-vedic-muted bg-white/70 border border-vedic-gold/30 rounded-xl p-3">
+            Sign-in is not connected yet. Add <b>VITE_SHOPIFY_CUSTOMER_ACCOUNT_CLIENT_ID</b> to the environment variables.
+          </p>
+        ) : (
+          <form onSubmit={submit} className="mt-5 space-y-3.5 text-xs">
+            {!isLogin && (
               <div>
-                <label className="block font-bold text-vedic-dark mb-1">Email Address</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-vedic-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    value={shopifyEmail}
-                    onChange={(e) => setShopifyEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    className="w-full pl-9 pr-3 py-2.5 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-gold"
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-vedic-maroon text-white py-3 rounded-full text-xs font-bold shadow-md hover:bg-vedic-maroonDark transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                Continue Securely
-              </button>
-              <p className="text-center text-[11px] text-vedic-muted leading-relaxed">
-                We'll email you a one-time code on our secure sign-in page — no password needed. New here? An account is
-                created automatically.
-              </p>
-            </form>
-          ) : authModalTab === 'login' ? (
-            <form onSubmit={handleLoginSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-vedic-dark mb-1">Email Address</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-vedic-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    value={loginData.email}
-                    onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                    placeholder="you@example.com"
-                    className="w-full pl-9 pr-3 py-2.5 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-gold"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block font-bold text-vedic-dark mb-1">Password</label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-vedic-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={loginData.password}
-                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full pl-9 pr-9 py-2.5 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-gold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-vedic-muted"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-vedic-maroon text-white py-3 rounded-full text-xs font-bold shadow-md hover:bg-vedic-maroonDark transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                Sign In
-              </button>
-              <p className="text-center text-vedic-muted">
-                New to Veda Structure?{' '}
-                <button type="button" onClick={() => switchTab('register')} className="text-vedic-goldDark font-bold hover:underline">
-                  Create an account
-                </button>
-              </p>
-            </form>
-          ) : (
-            <form onSubmit={handleRegisterSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-vedic-dark mb-1">Full Name</label>
+                <label className="block font-semibold text-vedic-dark mb-1">Full Name</label>
                 <div className="relative">
                   <User className="w-4 h-4 text-vedic-muted absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
-                    type="text"
-                    value={registerData.fullName}
-                    onChange={(e) => setRegisterData({ ...registerData, fullName: e.target.value })}
-                    placeholder="Your full name"
-                    className="w-full pl-9 pr-3 py-2.5 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-gold"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                    autoComplete="name"
+                    className={inputCls}
                   />
                 </div>
               </div>
-              <div>
-                <label className="block font-bold text-vedic-dark mb-1">Email Address</label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-vedic-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    value={registerData.email}
-                    onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                    placeholder="you@example.com"
-                    className="w-full pl-9 pr-3 py-2.5 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-gold"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block font-bold text-vedic-dark mb-1">Mobile Number</label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-vedic-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="tel"
-                    value={registerData.phone}
-                    onChange={(e) => setRegisterData({ ...registerData, phone: e.target.value })}
-                    placeholder="98765 43210"
-                    className="w-full pl-9 pr-3 py-2.5 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-gold"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-vedic-dark mb-1">Password</label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={registerData.password}
-                    onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full px-3 py-2.5 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-gold"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-vedic-dark mb-1">Confirm</label>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={registerData.confirmPassword}
-                    onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full px-3 py-2.5 bg-vedic-ivory rounded-xl border border-vedic-gold/30 focus:outline-none focus:border-vedic-gold"
-                  />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-[11px] text-vedic-muted">
+            )}
+
+            <div>
+              <label className="block font-semibold text-vedic-dark mb-1">Email Address</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-vedic-muted absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
-                  type="checkbox"
-                  onChange={() => setShowPassword((s) => !s)}
-                  checked={showPassword}
-                  className="accent-vedic-maroon"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  autoComplete="email"
+                  className={inputCls}
                 />
-                Show password
-              </label>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-gold-gradient text-vedic-dark py-3 rounded-full text-xs font-bold shadow-md hover:brightness-105 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                Create Account
-              </button>
-              <p className="text-center text-vedic-muted">
-                Already have an account?{' '}
-                <button type="button" onClick={() => switchTab('login')} className="text-vedic-goldDark font-bold hover:underline">
-                  Sign in
-                </button>
-              </p>
-            </form>
-          )}
-        </div>
+              </div>
+            </div>
+
+            {!isLogin && (
+              <>
+                <div>
+                  <label className="block font-semibold text-vedic-dark mb-1">
+                    Phone Number <span className="font-normal text-vedic-muted">(Optional)</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-vedic-muted absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Enter your phone number"
+                      autoComplete="tel"
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+                <label className="flex items-start gap-2 text-[11px] text-vedic-dark cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agree}
+                    onChange={(e) => setAgree(e.target.checked)}
+                    className="mt-0.5 accent-vedic-maroon"
+                  />
+                  <span>
+                    I agree to the{' '}
+                    <Link to="/policies/terms" onClick={closeAuthModal} className="text-vedic-maroon font-semibold underline">
+                      Terms &amp; Conditions
+                    </Link>{' '}
+                    and{' '}
+                    <Link to="/policies/privacy" onClick={closeAuthModal} className="text-vedic-maroon font-semibold underline">
+                      Privacy Policy
+                    </Link>
+                  </span>
+                </label>
+              </>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-vedic-maroon text-white py-3 rounded-xl text-sm font-bold shadow-md hover:bg-vedic-maroonDark transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {isLogin ? 'Send OTP' : 'Create Account'}
+              {!isSubmitting && <ArrowRight className="w-4 h-4" />}
+            </button>
+
+            <p className="text-center text-[11px] text-vedic-muted leading-relaxed">
+              A 6-digit code is emailed to you on Shopify's secure page. No password needed.
+            </p>
+
+            <div className="flex items-center gap-3 text-[10px] text-vedic-muted">
+              <span className="flex-1 h-px bg-vedic-gold/30" />
+              OR
+              <span className="flex-1 h-px bg-vedic-gold/30" />
+            </div>
+
+            <button
+              type="button"
+              onClick={moreOptions}
+              disabled={isSubmitting}
+              className="w-full bg-white py-3 rounded-xl border border-vedic-gold/30 text-sm font-semibold text-vedic-dark hover:border-vedic-maroon transition-colors disabled:opacity-60"
+            >
+              Continue with Google / Apple / Facebook
+            </button>
+          </form>
+        )}
+
+        <p className="mt-5 text-center text-xs text-vedic-dark">
+          {isLogin ? "Don't have an account? " : 'Already have an account? '}
+          <button
+            onClick={() => switchTab(isLogin ? 'register' : 'login')}
+            className="font-bold text-vedic-maroon hover:underline"
+          >
+            {isLogin ? 'Create Account' : 'Sign In'}
+          </button>
+        </p>
       </div>
     </div>
   );

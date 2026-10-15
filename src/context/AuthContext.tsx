@@ -30,8 +30,6 @@ interface AuthContextType {
   orders: Order[];
   authError: string | null;
   isSubmitting: boolean;
-  register: (input: { fullName: string; email: string; phone: string; password: string }) => Promise<boolean>;
-  login: (input: { email: string; password: string }) => Promise<boolean>;
   logout: () => void;
   updateProfile: (updates: { fullName?: string; phone?: string }) => Promise<boolean>;
   addAddress: (address: Omit<Address, 'id'>) => Promise<boolean>;
@@ -62,6 +60,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const defaultDefaultAddress = (addresses: Address[]) => addresses.find((a) => a.isDefault) ?? addresses[0];
 
+const PENDING_KEY = 'vedic_pending_signup';
+
+/** Name / phone from the "Create account" form, kept across the redirect to Shopify's sign-in page. */
+export const savePendingSignup = (data: { email: string; fullName: string; phone: string }) => {
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ ...data, email: data.email.toLowerCase() }));
+  } catch {
+    /* optional extra — sign-in works without it */
+  }
+};
+
+const takePendingSignup = (email: string): { fullName: string; phone: string } | null => {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    if (!raw) return null;
+    localStorage.removeItem(PENDING_KEY);
+    const data = JSON.parse(raw) as { email: string; fullName: string; phone: string };
+    return data.email === email.toLowerCase() ? data : null;
+  } catch {
+    return null;
+  }
+};
+
 const SHOPIFY_CUSTOMER_PREFIX = 'gid://shopify/Customer/';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -69,8 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authLoading, setAuthLoading] = useState<boolean>(() => shopifyAuth && hasStoredSession());
   const [user, setUser] = useState<AuthUser | null>(() => {
     const session = authService.getSession();
-    if (!shopifyAuth) return session;
-    // With Shopify sign-in only a Shopify customer counts — never a leftover local demo account.
+    // Only a Shopify customer with a live Shopify session counts — never a leftover local account.
     return session && session.id.startsWith(SHOPIFY_CUSTOMER_PREFIX) && hasStoredSession() ? session : null;
   });
   const [orders, setOrders] = useState<Order[]>(() => {
@@ -135,7 +155,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { returnTo } = await completeLogin(params);
     const token = await getAccessToken();
     if (!token) throw new AuthApiError('Sign-in could not be completed. Please try again.', 401);
-    setUser(authService.upsertShopifyUser(await fetchProfile(token)));
+    const profile = await fetchProfile(token);
+    let signedIn = authService.upsertShopifyUser(profile);
+    // Details typed on the "Create account" form (name / phone) — applied once, after the first Shopify sign-in.
+    const pending = takePendingSignup(profile.email);
+    if (pending) {
+      try {
+        signedIn = await authService.updateUserProfile(signedIn.id, {
+          fullName: signedIn.fullName.includes(' ') ? undefined : pending.fullName,
+          phone: signedIn.phone ? undefined : pending.phone,
+        });
+      } catch {
+        /* the account itself is fine; the profile can be edited later */
+      }
+    }
+    setUser(signedIn);
     setAuthLoading(false);
     closeAuthModal();
     return returnTo;
@@ -155,38 +189,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const clearAuthError = useCallback(() => setAuthError(null), []);
-
-  const register: AuthContextType['register'] = async (input) => {
-    setIsSubmitting(true);
-    setAuthError(null);
-    try {
-      const newUser = await authService.registerUser(input);
-      setUser(newUser);
-      closeAuthModal();
-      return true;
-    } catch (e) {
-      setAuthError(e instanceof Error ? e.message : 'Could not create your account. Please try again.');
-      return false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const login: AuthContextType['login'] = async (input) => {
-    setIsSubmitting(true);
-    setAuthError(null);
-    try {
-      const loggedInUser = await authService.loginUser(input);
-      setUser(loggedInUser);
-      closeAuthModal();
-      return true;
-    } catch (e) {
-      setAuthError(e instanceof Error ? e.message : 'Could not sign you in. Please try again.');
-      return false;
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const logout = () => {
     authService.logoutSession();
@@ -285,8 +287,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         orders,
         authError,
         isSubmitting,
-        register,
-        login,
         logout,
         updateProfile,
         addAddress,
