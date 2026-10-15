@@ -24,6 +24,8 @@ import {
   Tag,
   X,
   Package,
+  Minus,
+  Trash2,
 } from 'lucide-react';
 import { isShopifyEnabled, resolveMerchandiseId } from '../lib/shopify';
 import { CheckoutApiError, getCodConfig, placeCodOrder, type CodConfig } from '../lib/codApi';
@@ -190,6 +192,7 @@ export const CheckoutPage: React.FC = () => {
     clearCart,
     beginCheckout,
     removeFromCart,
+    updateQuantity,
     appliedCoupon,
     applyCoupon,
     removeCoupon,
@@ -531,26 +534,58 @@ export const CheckoutPage: React.FC = () => {
           </span>
         </h3>
 
-        <ul className="space-y-3.5 max-h-72 overflow-y-auto pr-1">
+        <ul className="space-y-4 max-h-[26rem] overflow-y-auto pr-1">
           {cart.map((item) => {
             const label = item.selectedSize || item.selectedVariant?.name;
+            const size = item.selectedSize ?? null;
             return (
-              <li key={`${item.product.id}-${item.selectedSize ?? ''}`} className="flex gap-3 items-center">
-                <div className="relative shrink-0">
-                  <img
-                    src={item.product.images[0]}
-                    alt=""
-                    className="w-14 h-14 rounded-xl object-cover border border-vedic-gold/25 bg-vedic-ivory"
-                  />
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-vedic-dark text-white text-[10px] font-bold flex items-center justify-center">
-                    {item.quantity}
-                  </span>
+              <li key={`${item.product.id}-${item.selectedSize ?? ''}`} className="flex gap-3.5 items-start">
+                <img
+                  src={item.product.images[0]}
+                  alt={item.product.title}
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border border-vedic-gold/25 bg-vedic-ivory shrink-0"
+                />
+                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-vedic-dark line-clamp-2 leading-snug">{item.product.title}</p>
+                      {label && <p className="text-[11px] text-vedic-muted mt-0.5">{label}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(item.product.id, size)}
+                      disabled={paying}
+                      aria-label={`Remove ${item.product.title}`}
+                      className="text-vedic-muted hover:text-red-600 transition-colors shrink-0 p-1 -mr-1 disabled:opacity-40"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="inline-flex items-center rounded-full border border-vedic-gold/40 bg-white overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.product.id, item.quantity - 1, size)}
+                        disabled={paying}
+                        aria-label="Decrease quantity"
+                        className="w-8 h-8 flex items-center justify-center text-vedic-dark hover:bg-vedic-card transition-colors disabled:opacity-40"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="w-8 text-center text-sm font-bold text-vedic-dark" aria-live="polite">{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.product.id, Math.min(20, item.quantity + 1), size)}
+                        disabled={paying || item.quantity >= 20}
+                        aria-label="Increase quantity"
+                        className="w-8 h-8 flex items-center justify-center text-vedic-dark hover:bg-vedic-card transition-colors disabled:opacity-40"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <span className="text-sm font-extrabold text-vedic-dark">{inr(unitPrice(item) * item.quantity)}</span>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-vedic-dark line-clamp-2 leading-snug">{item.product.title}</p>
-                  {label && <p className="text-[11px] text-vedic-muted mt-0.5">{label}</p>}
-                </div>
-                <span className="text-sm font-bold text-vedic-dark shrink-0">{inr(unitPrice(item) * item.quantity)}</span>
               </li>
             );
           })}
